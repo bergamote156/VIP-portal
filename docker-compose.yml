@@ -1,0 +1,44 @@
+services:
+  vip-portal:
+    image: vip-portal #tomcat:11.0.21-jre21-temurin
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - MARIADB_DATABASE=${MARIADB_DATABASE}
+        - MARIADB_USER=${MARIADB_USER}
+        - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+        - MARIADB_HOST=${MARIADB_HOST}
+    ports:
+      - 8080:8080
+    volumes:
+      - ./vip-portal/target/vip-portal-4.7-SNAPSHOT.war:/usr/local/tomcat/webapps/ROOT.war
+      # - ./docker/tomcat/context.xml:/usr/local/tomcat/conf/context.xml
+      # - ./docker/tomcat/setenv.sh:/usr/local/tomcat/bin/setenv.sh
+      - ./docker/vip.conf:/root/.vip/vip.conf
+      - ./docker/moteur/moteur2plugins.conf:/root/.moteur2/moteur2plugins.conf
+    networks:
+      - vip
+    depends_on:
+      - mariadb
+  mariadb:
+    image: mariadb:11.8.3
+    ports:
+      - 3306:3306
+    environment:
+      - MARIADB_DATABASE=${MARIADB_DATABASE}
+      - MARIADB_USER=${MARIADB_USER}
+      - MARIADB_PASSWORD=${MARIADB_PASSWORD}
+      - MARIADB_ROOT_PASSWORD=${MARIADB_ROOT_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/init:/docker-entrypoint-initdb.d
+      # - ./docker/mariadb/conf:/etc/mysql/conf.d
+    networks:
+      - vip
+  
+
+volumes:
+  mariadb_data:
+networks:
+  vip:

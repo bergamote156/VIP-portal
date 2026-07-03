@@ -1,0 +1,6 @@
+-- CREATE USER 'vip'@'localhost' IDENTIFIED BY '${MARIADB_PASSWORD}';
+ALTER DATABASE vip CHARACTER SET=latin1;
+GRANT ALL PRIVILEGES ON vip.* TO 'vip'@'%';
+CREATE DATABASE workflowsdb;
+ALTER DATABASE workflowsdb CHARACTER SET=latin1;
+GRANT ALL PRIVILEGES ON workflowsdb.* TO 'vip'@'%';
