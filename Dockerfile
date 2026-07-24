@@ -7,6 +7,7 @@ ARG MARIADB_USER
 ARG MARIADB_PASSWORD
 
 ADD docker/tomcat/context.xml /usr/local/tomcat/conf/context.xml
+ADD docker/moteur/moteur2plugins.conf /root/.moteur2/moteur2plugins.conf
 
 ADD docker/tomcat/setenv.sh /tmp/setenv.sh
 RUN /tmp/setenv.sh

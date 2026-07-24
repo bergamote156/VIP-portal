@@ -16,7 +16,7 @@ services:
       # - ./docker/tomcat/context.xml:/usr/local/tomcat/conf/context.xml
       # - ./docker/tomcat/setenv.sh:/usr/local/tomcat/bin/setenv.sh
       - ./docker/vip.conf:/root/.vip/vip.conf
-      - ./docker/moteur/moteur2plugins.conf:/root/.moteur2/moteur2plugins.conf
+      # - ./docker/moteur/moteur2plugins.conf:/root/.moteur2/moteur2plugins.conf
     networks:
       - vip
     depends_on:
