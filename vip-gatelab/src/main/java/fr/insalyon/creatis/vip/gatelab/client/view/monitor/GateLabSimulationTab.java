@@ -5,7 +5,7 @@ import fr.insalyon.creatis.vip.application.client.view.common.AbstractSimulation
 import fr.insalyon.creatis.vip.application.client.view.monitor.ChartsTab;
 import fr.insalyon.creatis.vip.application.client.view.monitor.JobsTab;
 import fr.insalyon.creatis.vip.application.client.view.monitor.LogsTab;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import fr.insalyon.creatis.vip.application.client.view.monitor.SummaryTab;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.gatelab.client.GateLabConstants;
@@ -22,7 +22,7 @@ public class GateLabSimulationTab extends AbstractSimulationTab {
     private ChartsTab chartsTab;
     private LogsTab logsTab;
 
-    public GateLabSimulationTab(String simulationID, String simulationName, SimulationStatus status, String date) {
+    public GateLabSimulationTab(String simulationID, String simulationName, WorkflowStatus status, String date) {
 
         super(simulationID, simulationName, status);
         

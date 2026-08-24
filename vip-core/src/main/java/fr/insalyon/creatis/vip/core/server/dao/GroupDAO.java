@@ -1,14 +1,14 @@
 package fr.insalyon.creatis.vip.core.server.dao;
 
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.GroupType;
-
 import java.util.List;
+import java.util.Set;
 
-/**
- *
- * @author Rafael Silva
- */
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.GroupType;
+
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.GroupType;
+
 public interface GroupDAO {
 
     public void add(Group group) throws DAOException;
@@ -19,9 +19,11 @@ public interface GroupDAO {
 
     public List<Group> get() throws DAOException;
 
+    public Group getByName(String groupName) throws DAOException;
+
     public List<Group> getByType(GroupType type) throws DAOException;
 
     public List<Group> getByApplication(String applicationName) throws DAOException;
 
-    public List<Group> getByRessource(String ressourceName) throws DAOException;
+    public Set<Group> getByRessource(String ressourceName) throws DAOException;
 }

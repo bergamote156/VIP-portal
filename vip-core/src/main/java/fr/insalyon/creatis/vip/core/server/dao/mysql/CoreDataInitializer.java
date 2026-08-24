@@ -1,12 +1,12 @@
 package fr.insalyon.creatis.vip.core.server.dao.mysql;
 
-import fr.insalyon.creatis.devtools.MD5;
-import fr.insalyon.creatis.vip.core.client.bean.TermsOfUse;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
-import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
-import fr.insalyon.creatis.vip.core.server.business.Server;
-import fr.insalyon.creatis.vip.core.server.dao.*;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+import java.sql.Timestamp;
+import java.util.UUID;
+
+import javax.sql.DataSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +17,17 @@ import org.springframework.jdbc.core.support.JdbcDaoSupport;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
-import java.io.UnsupportedEncodingException;
-import java.security.NoSuchAlgorithmException;
-import java.util.Date;
-import java.util.UUID;
+import fr.insalyon.creatis.devtools.MD5;
+import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
+import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
+import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
+import fr.insalyon.creatis.vip.core.models.TermsOfUse;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.server.business.CoreUtil;
+import fr.insalyon.creatis.vip.core.server.business.Server;
+import fr.insalyon.creatis.vip.core.server.dao.DAOException;
+import fr.insalyon.creatis.vip.core.server.dao.TermsUseDAO;
+import fr.insalyon.creatis.vip.core.server.dao.UserDAO;
 
 @Component
 @Transactional
@@ -57,7 +63,8 @@ public class CoreDataInitializer extends JdbcDaoSupport {
 
     private void initializeUserTables() {
         if (tableInitializer.createTable("VIPUsers",
-                "email VARCHAR(255), "
+                          "id VARCHAR(" + CoreConstants.UUID_SIZE + "), "
+                        + "email VARCHAR(255), "
                         + "next_email VARCHAR(255), "
                         + "pass VARCHAR(40), "
                         + "first_name VARCHAR(255), "
@@ -78,6 +85,7 @@ public class CoreDataInitializer extends JdbcDaoSupport {
                         + "account_locked BOOLEAN,"
                         + "apikey VARCHAR(255),"
                         + "PRIMARY KEY(email),"
+                        + "UNIQUE (id),"
                         + "UNIQUE (first_name,last_name),"
                         + "UNIQUE (apikey)")) {
 
@@ -85,17 +93,21 @@ public class CoreDataInitializer extends JdbcDaoSupport {
                     + server.getAdminLastName().toLowerCase();
 
             try {
+                final Timestamp now = new Timestamp(System.currentTimeMillis());
+
                 userDAO.add(
-                        new User(server.getAdminFirstName(),
+                        new User(CoreUtil.createUUID(),
+                                server.getAdminFirstName(),
                                 server.getAdminLastName(),
                                 server.getAdminEmail(),
                                 null,
                                 server.getAdminInstitution(),
-                                MD5.get(server.getAdminPassword()),
                                 true,
                                 UUID.randomUUID().toString(), folder, "",
-                                new Date(), new Date(), UserLevel.Administrator,
-                                CountryCode.fr, 100, null,null,0,false));
+                                now, now, UserLevel.Administrator,
+                                CountryCode.fr, 100, null,null,0,false, null));
+
+                userDAO.definePassword(server.getAdminEmail(), MD5.get(server.getAdminPassword()));
 
             } catch (DAOException | NoSuchAlgorithmException | UnsupportedEncodingException ex) {
                 logger.error("Error creating VIPUsers table", ex);

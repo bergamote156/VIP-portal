@@ -5,7 +5,7 @@ import com.smartgwt.client.widgets.Canvas;
 import com.smartgwt.client.widgets.layout.VLayout;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
 import fr.insalyon.creatis.vip.application.client.view.common.AbstractCornerTab;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import fr.insalyon.creatis.vip.application.client.view.monitor.general.LogsLayout;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 
@@ -18,7 +18,7 @@ public class GateLabGeneralTab extends AbstractCornerTab {
     private GateLabGeneralLayout generalLayout;
     private GateLabDownloadsLayout downloadLayout;
     
-    public GateLabGeneralTab(String simulationID, SimulationStatus status, String date) {
+    public GateLabGeneralTab(String simulationID, WorkflowStatus status, String date) {
 
         this.setTitle(Canvas.imgHTML(ApplicationConstants.ICON_GENERAL));
         this.setPrompt("General Information");

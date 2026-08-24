@@ -1,42 +1,31 @@
 package fr.insalyon.creatis.vip.core.integrationtest.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
-import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
-import fr.insalyon.creatis.vip.core.integrationtest.BaseInternalApiSpringIT;
-import fr.insalyon.creatis.vip.core.server.model.AuthenticationCredentials;
-import fr.insalyon.creatis.vip.core.server.security.common.SpringPrincipalUser;
-import org.junit.jupiter.api.BeforeEach;
+import static org.hamcrest.Matchers.nullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-import static org.hamcrest.Matchers.nullValue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
+import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
+import fr.insalyon.creatis.vip.core.integrationtest.BaseInternalApiSpringIT;
+import fr.insalyon.creatis.vip.core.server.model.AuthenticationCredentials;
 
 public class SessionControllerIT extends BaseInternalApiSpringIT {
-
-    private ObjectMapper mapper;
-
-    @BeforeEach
-    protected void setUpMapper() throws Exception {
-        mapper = new ObjectMapper();
-    }
-
-    private RequestPostProcessor getUserSecurityMock(User user) {
-        return SecurityMockMvcRequestPostProcessors.user(new SpringPrincipalUser(user));
-    }
 
     @Test
     public void getSession() throws Exception {
         createUser(emailUser1);
         userDAO.updateSession(emailUser1, "super_session");
-        user1 = userDAO.getUser(emailUser1);
+        user1 = userDAO.get(emailUser1);
 
         // not connected
         mockMvc.perform(get("/internal/session"))
@@ -64,6 +53,7 @@ public class SessionControllerIT extends BaseInternalApiSpringIT {
         mockMvc.perform(post("/internal/session")
             .contentType(MediaType.APPLICATION_JSON)
             .content(mapper.writeValueAsString(credentials)))
+            .andDo(print())
             .andExpect(status().isUnauthorized())
             .andExpect(cookie().doesNotExist(CoreConstants.COOKIES_USER))
             .andExpect(cookie().doesNotExist(CoreConstants.COOKIES_SESSION));

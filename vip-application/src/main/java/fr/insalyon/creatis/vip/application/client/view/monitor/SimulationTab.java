@@ -15,7 +15,7 @@ public class SimulationTab extends AbstractSimulationTab {
     private ChartsTab chartsTab;
     private LogsTab logsTab;
 
-    public SimulationTab(String simulationID, String simulationName, SimulationStatus status) {
+    public SimulationTab(String simulationID, String simulationName, WorkflowStatus status) {
 
         super(simulationID, simulationName, status);
 

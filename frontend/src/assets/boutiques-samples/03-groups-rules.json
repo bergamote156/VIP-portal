@@ -1,0 +1,75 @@
+{
+  "name": "Groups Rules Demo",
+  "tool-version": "1.2.0",
+  "description": "Descriptor to test mutually-exclusive, one-is-required and all-or-none group constraints.",
+  "schema-version": "0.5",
+  "command-line": "run [METHOD_A] [METHOD_B] [FALLBACK] [ALPHA] [BETA]",
+  "inputs": [
+    {
+      "id": "method_a",
+      "name": "Method A",
+      "type": "Flag",
+      "description": "First processing method.",
+      "value-key": "[METHOD_A]",
+      "command-line-flag": "--method-a",
+      "optional": true,
+      "default-value": false
+    },
+    {
+      "id": "method_b",
+      "name": "Method B",
+      "type": "Flag",
+      "description": "Second processing method.",
+      "value-key": "[METHOD_B]",
+      "command-line-flag": "--method-b",
+      "optional": true,
+      "default-value": false
+    },
+    {
+      "id": "fallback",
+      "name": "Fallback mode",
+      "type": "Flag",
+      "description": "Fallback option.",
+      "value-key": "[FALLBACK]",
+      "command-line-flag": "--fallback",
+      "optional": true,
+      "default-value": false
+    },
+    {
+      "id": "alpha",
+      "name": "Alpha parameter",
+      "type": "String",
+      "description": "First parameter in all-or-none group.",
+      "value-key": "[ALPHA]",
+      "optional": true
+    },
+    {
+      "id": "beta",
+      "name": "Beta parameter",
+      "type": "String",
+      "description": "Second parameter in all-or-none group.",
+      "value-key": "[BETA]",
+      "optional": true
+    }
+  ],
+  "groups": [
+    {
+      "id": "exclusive_methods",
+      "name": "Exclusive methods",
+      "members": ["method_a", "method_b"],
+      "mutually-exclusive": true
+    },
+    {
+      "id": "required_choice",
+      "name": "Required choice",
+      "members": ["method_b", "fallback"],
+      "one-is-required": true
+    },
+    {
+      "id": "paired_parameters",
+      "name": "Paired parameters",
+      "members": ["alpha", "beta"],
+      "all-or-none": true
+    }
+  ]
+}

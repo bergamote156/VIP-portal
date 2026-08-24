@@ -18,10 +18,10 @@ import com.smartgwt.client.widgets.layout.SectionStackSection;
 import com.smartgwt.client.widgets.layout.VLayout;
 import com.smartgwt.client.widgets.tab.Tab;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.Simulation;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowService;
 import fr.insalyon.creatis.vip.application.client.view.monitor.menu.SimulationsContextMenu;
 import fr.insalyon.creatis.vip.application.client.view.monitor.record.SimulationRecord;
+import fr.insalyon.creatis.vip.application.models.Workflow;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.view.ModalWindow;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
@@ -46,7 +46,7 @@ public class SimulationsTab extends Tab {
     protected HandlerRegistration rowMouseDownHandler;
     protected HandlerRegistration rowContextClickHandler;
     private SectionStackSection searchSection;
-    private List<Simulation> simulationsList;
+    private List<Workflow> simulationsList;
 
     public SimulationsTab() {
 
@@ -107,7 +107,7 @@ public class SimulationsTab extends Tab {
                 new SimulationsContextMenu(modal,
                         event.getRecord().getAttribute("simulationId"),
                         event.getRecord().getAttribute("simulationName"),
-                        SimulationStatus.valueOf(event.getRecord().getAttribute("status")),
+                        WorkflowStatus.valueOf(event.getRecord().getAttribute("status")),
                         event.getRecord().getAttribute("application"),
                         event.getRecord().getAttribute("applicationVersion"),
                         event.getRecord().getAttribute("applicationClass"),
@@ -123,7 +123,7 @@ public class SimulationsTab extends Tab {
                             event.getRecord().getAttribute("simulationId"),
                             event.getRecord().getAttribute("simulationName"),
                             event.getRecord().getAttribute("application"),
-                            SimulationStatus.valueOf(
+                            WorkflowStatus.valueOf(
                                 event.getRecord().getAttribute("status")),
                             event.getRecord().getAttributeAsDate("date"));
                     Layout.getInstance().addTab(
@@ -135,32 +135,32 @@ public class SimulationsTab extends Tab {
 
     public void loadData() {
 
-        final AsyncCallback<List<Simulation>> callback = new AsyncCallback<List<Simulation>>() {
+        final AsyncCallback<List<Workflow>> callback = new AsyncCallback<List<Workflow>>() {
             @Override
             public void onFailure(Throwable caught) {
                 Layout.getInstance().setWarningMessage("Unable to get simulations list:<br />" + caught.getMessage());
             }
 
             @Override
-            public void onSuccess(List<Simulation> result) {
+            public void onSuccess(List<Workflow> result) {
 
                 List<SimulationRecord> dataList = new ArrayList<SimulationRecord>();
 
-                for (Simulation simulation : result) {
-                    if (simulation.getStatus() != SimulationStatus.Cleaned
+                for (Workflow simulation : result) {
+                    if (simulation.getStatus() != WorkflowStatus.Cleaned
                             || CoreModule.user.isSystemAdministrator()
                             || CoreModule.user.isGroupAdmin()) {
 
-                        if (user == null || (user.equals(simulation.getUserName()))) {
+                        if (user == null || (user.equals(simulation.getUserFullName()))) {
                             dataList.add(new SimulationRecord(
-                                simulation.getSimulationName(),
+                                simulation.getWorkflowName(),
                                 simulation.getApplicationName(),
                                 simulation.getApplicationVersion(),
-                                simulation.getApplicationClass(),
+                                "",
                                 simulation.getStatus(),
                                 simulation.getID(),
-                                simulation.getUserName(),
-                                simulation.getDate()));
+                                simulation.getUserFullName(),
+                                simulation.getStartDate()));
                         }
                     }
                 }
@@ -186,7 +186,7 @@ public class SimulationsTab extends Tab {
         this.searchSection.setExpanded(true);
     }
 
-    public List<Simulation> getSimulationsList() {
+    public List<Workflow> getSimulationsList() {
         return simulationsList;
     }
 

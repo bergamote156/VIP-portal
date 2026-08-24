@@ -1,30 +1,33 @@
 package fr.insalyon.creatis.vip.core.server.rpc;
 
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.client.view.CoreConstants.GROUP_ROLE;
-import fr.insalyon.creatis.vip.core.client.view.CoreException;
-import fr.insalyon.creatis.vip.core.server.business.Server;
-import fr.insalyon.creatis.vip.core.server.business.VipSessionBusiness;
+import java.util.Map;
+
+import fr.insalyon.creatis.vip.core.server.security.session.SessionAuthenticationProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.context.support.WebApplicationContextUtils;
+
+import com.google.gwt.user.client.rpc.SerializationException;
+import com.google.gwt.user.server.rpc.RPCRequest;
 import com.google.gwt.user.server.rpc.jakarta.RemoteServiceServlet;
 
-
+import fr.insalyon.creatis.vip.core.client.view.CoreConstants.GROUP_ROLE;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.client.view.CoreException;
+import fr.insalyon.creatis.vip.core.server.business.Server;
+import fr.insalyon.creatis.vip.core.server.business.VipSessionBusiness;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import java.util.Map;
 
 /**
  * Parent for all vip GWT RPC servlet.
  *
  * Includes the mechanism to access spring managed beans in all subclasses,
  * as the Server bean here.
- *
- * @author Rafael Silva
  */
 public abstract class AbstractRemoteServiceServlet extends RemoteServiceServlet {
 
@@ -33,6 +36,7 @@ public abstract class AbstractRemoteServiceServlet extends RemoteServiceServlet 
     protected Server server;
     private ApplicationContext applicationContext;
     private VipSessionBusiness vipSessionBusiness;
+    private SessionAuthenticationProvider sessionAuthenticationProvider;
 
     @Override
     public void init() throws ServletException {
@@ -41,6 +45,7 @@ public abstract class AbstractRemoteServiceServlet extends RemoteServiceServlet 
                 WebApplicationContextUtils.findWebApplicationContext(getServletContext());
         server = applicationContext.getBean(Server.class);
         vipSessionBusiness = getBean(VipSessionBusiness.class);
+        sessionAuthenticationProvider = getBean(SessionAuthenticationProvider.class);
     }
 
     /*
@@ -67,13 +72,25 @@ public abstract class AbstractRemoteServiceServlet extends RemoteServiceServlet 
 
     @Override
     protected void checkPermutationStrongName() throws SecurityException {
-
         // Content-Type text/x-gwt-rpc; charset=utf-8
         // X-GWT-Permutation F1AEC601C5D8E4490E7096AB58EB
         HttpServletRequest req = this.getThreadLocalRequest();
         if (!req.getContentType().contains("text/x-gwt-rpc")) {
             super.checkPermutationStrongName();
         }
+    }
+
+    @Override
+    public String processCall(RPCRequest rpcRequest) throws SerializationException {
+        try {
+            // To set up the user in spring security to make it accessible through the Supplier<User> used in updated business's
+            // Necessary from GWT context, as spring security is not activated there
+            SecurityContextHolder.getContext().setAuthentication(
+                sessionAuthenticationProvider.createAuthenticationFromUser(getSessionUser()));
+        } catch (CoreException e) {
+            doUnexpectedFailure(e);
+        }
+        return super.processCall(rpcRequest);
     }
 
     protected HttpSession getSession() {
@@ -93,7 +110,6 @@ public abstract class AbstractRemoteServiceServlet extends RemoteServiceServlet 
     }
 
     protected void authenticateSystemAdministrator(Logger logger) throws CoreException {
-
         User user = getSessionUser();
         if (!user.isSystemAdministrator()) {
             logger.error("The user has no system administrator rights: " + user.getEmail());
@@ -102,7 +118,6 @@ public abstract class AbstractRemoteServiceServlet extends RemoteServiceServlet 
     }
 
     protected void authenticateDeveloper(Logger logger) throws CoreException {
-
         User user = getSessionUser();
         if (!user.isDeveloper()) {
             logger.error("The user has no system administrator rights: " + user.getEmail());

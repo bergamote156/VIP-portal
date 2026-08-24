@@ -1,0 +1,51 @@
+{
+  "name": "Number and Choices Demo",
+  "tool-version": "1.0.0",
+  "description": "Descriptor to test numeric constraints and value choices.",
+  "schema-version": "0.5",
+  "command-line": "run-tool [MODE] [THRESHOLD] [ITERATIONS] [VERBOSE]",
+  "inputs": [
+    {
+      "id": "mode",
+      "name": "Execution mode",
+      "type": "String",
+      "description": "Execution mode of the application.",
+      "value-key": "[MODE]",
+      "value-choices": ["fast", "accurate"],
+      "default-value": "fast"
+    },
+    {
+      "id": "threshold",
+      "name": "Threshold",
+      "type": "Number",
+      "description": "Must be strictly greater than 0 and less or equal to 1.",
+      "value-key": "[THRESHOLD]",
+      "minimum": 0,
+      "exclusive-minimum": true,
+      "maximum": 1,
+      "default-value": 0.5
+    },
+    {
+      "id": "iterations",
+      "name": "Iterations",
+      "type": "Number",
+      "description": "Optional integer from 1 to 100.",
+      "value-key": "[ITERATIONS]",
+      "optional": true,
+      "integer": true,
+      "minimum": 1,
+      "maximum": 100,
+      "default-value": 10
+    },
+    {
+      "id": "verbose",
+      "name": "Verbose",
+      "type": "Flag",
+      "description": "Enable verbose logs.",
+      "value-key": "[VERBOSE]",
+      "command-line-flag": "--verbose",
+      "optional": true,
+      "default-value": false
+    }
+  ]
+}

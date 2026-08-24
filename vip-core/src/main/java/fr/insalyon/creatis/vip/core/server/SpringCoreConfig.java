@@ -1,5 +1,6 @@
 package fr.insalyon.creatis.vip.core.server;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.insalyon.creatis.grida.client.GRIDACacheClient;
 import fr.insalyon.creatis.grida.client.GRIDAClient;
@@ -22,14 +23,18 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.LazyConnectionDataSourceProxy;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
 
@@ -57,13 +62,15 @@ import static org.springframework.util.ResourceUtils.CLASSPATH_URL_PREFIX;
 // Spring Security & Spring MVC are configured in a shared ApplicationContext.
 // This implies that the root context must also be a WebMvc one.
 @EnableWebMvc
+@EnableScheduling
 @ComponentScan(
         basePackages = "fr.insalyon.creatis.vip",
         excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.ANNOTATION, value = RestController.class),
                 // Bean scanning must exclude other @EnableWebMvc beans, otherwise their own scanning rule
                 // would be recursively triggered, and all beans would end up in the root context.
-                @ComponentScan.Filter(type = FilterType.ANNOTATION, value = EnableWebMvc.class)
+                @ComponentScan.Filter(type = FilterType.ANNOTATION, value = EnableWebMvc.class),
+                @ComponentScan.Filter(type = FilterType.ANNOTATION, value = RestControllerAdvice.class)
         }
 )
 public class SpringCoreConfig {
@@ -122,8 +129,15 @@ public class SpringCoreConfig {
     }
 
     @Bean
+    @Primary
     public ObjectMapper objectMapper() {
-        return Jackson2ObjectMapperBuilder.json().build();
+        return Jackson2ObjectMapperBuilder.json()
+                .featuresToEnable(
+                        DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES,
+                        DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES,
+                        DeserializationFeature.FAIL_ON_UNEXPECTED_VIEW_PROPERTIES,
+                        DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+                .build();
     }
 
     // to verify the @Value injection existence

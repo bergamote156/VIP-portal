@@ -10,12 +10,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import fr.insalyon.creatis.vip.core.server.security.session.SessionAuthenticationFilter;
 import fr.insalyon.creatis.vip.core.server.security.session.SessionAuthenticationProvider;
+import org.springframework.security.web.firewall.RequestRejectedHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -23,11 +25,16 @@ public class InternalSecurityConfig {
 
     private final SessionAuthenticationProvider sessionAuthenticationProvider;
     private final VipAuthenticationEntryPoint vipAuthenticationEntryPoint;
+    private final RequestRejectedHandler requestRejectedHandler;
 
     @Autowired
-    public InternalSecurityConfig(SessionAuthenticationProvider sessionAuthenticationProvider, VipAuthenticationEntryPoint vipAuthenticationEntryPoint) {
+    public InternalSecurityConfig(
+            SessionAuthenticationProvider sessionAuthenticationProvider,
+            VipAuthenticationEntryPoint vipAuthenticationEntryPoint,
+            RequestRejectedHandler requestRejectedHandler) {
         this.sessionAuthenticationProvider = sessionAuthenticationProvider;
         this.vipAuthenticationEntryPoint = vipAuthenticationEntryPoint;
+        this.requestRejectedHandler = requestRejectedHandler;
     }
 
     @Bean
@@ -38,6 +45,10 @@ public class InternalSecurityConfig {
                 .securityMatcher(antMatcher("/internal/**"))
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers(antMatcher(HttpMethod.POST, "/internal/session")).permitAll()
+                        .requestMatchers(antMatcher(HttpMethod.POST, "/internal/users")).permitAll()
+                        .requestMatchers(antMatcher(HttpMethod.PUT, "/internal/users/*/activate")).permitAll()
+                        .requestMatchers(antMatcher(HttpMethod.GET, "/internal/applications/public")).permitAll()
+                        .requestMatchers(antMatcher(HttpMethod.GET, "/internal/publications/public")).permitAll()
                         .requestMatchers(antMatcher("/internal/**")).authenticated())
                 // default CORS : no configuration, so block preflight and let the rest
                 .cors(Customizer.withDefaults())
@@ -47,9 +58,18 @@ public class InternalSecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         // we could active CSRF protection on whole endpoint but we will need a
                         // /internal/csrf GET endpoint
-                        .ignoringRequestMatchers(antMatcher(HttpMethod.POST, "/internal/session")))
+                        .ignoringRequestMatchers(
+                            antMatcher(HttpMethod.POST, "/internal/session"),
+                            antMatcher(HttpMethod.POST, "/internal/users"),
+                            antMatcher(HttpMethod.PUT, "/internal/users/*/activate")
+                        ))
                 .exceptionHandling((handler) -> handler.authenticationEntryPoint(vipAuthenticationEntryPoint));
         return http.build();
+    }
+
+    @Bean
+    public WebSecurityCustomizer customizeRequestRejectedException() {
+        return (web) -> web.requestRejectedHandler(requestRejectedHandler);
     }
 
     private SessionAuthenticationFilter getSessionAuthenticationFilter() {

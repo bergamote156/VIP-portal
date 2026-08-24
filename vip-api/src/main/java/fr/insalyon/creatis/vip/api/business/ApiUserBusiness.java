@@ -1,68 +1,48 @@
 package fr.insalyon.creatis.vip.api.business;
 
-import fr.insalyon.creatis.vip.core.server.exception.ApiException;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
-import fr.insalyon.creatis.vip.core.server.business.ConfigurationBusiness;
-
-import java.util.ArrayList;
+import java.util.HashSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.server.business.AuthenticationBusiness;
+import fr.insalyon.creatis.vip.core.server.business.EmailBusiness;
+import fr.insalyon.creatis.vip.core.server.business.PasswordBusiness;
 
-/**
- * @author khalilkes service to signup a user in VIP
- */
+
 @Service
 public class ApiUserBusiness {
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private final ConfigurationBusiness configurationBusiness;
+    private final EmailBusiness emailBusiness;
+    private final PasswordBusiness passwordBusiness;
+    private final AuthenticationBusiness authenticationBusiness;
 
-    public ApiUserBusiness(ConfigurationBusiness configurationBusiness) {
-        this.configurationBusiness = configurationBusiness;
+    @Autowired
+    public ApiUserBusiness(PasswordBusiness passwordBusiness, AuthenticationBusiness authenticationBusiness, EmailBusiness emailBusiness) {
+        this.emailBusiness = emailBusiness;
+        this.passwordBusiness = passwordBusiness;
+        this.authenticationBusiness = authenticationBusiness;
     }
 
-    /**
-     *
-     * @param user
-     * @param comments
-     * @param applicationNames
-     * @throws ApiException
-     */
-    public void signup(User user, String comments) throws ApiException {
-        try {
-            configurationBusiness.signup(
-                user, 
-                comments,
-                false, 
-                true, 
-                new ArrayList<>());
-            logger.info("Signing up with the " + user.getEmail());
-        } catch (BusinessException e) {
-            throw new ApiException("Signing up Error", e);
-        }
+    public User signup(User user, String comments) throws VipException {
+        logger.info("Signing up with the " + user.getEmail());
+        return authenticationBusiness.signup(
+                user,
+                comments);
     }
 
-
-
-    public void sendResetCode(String email) throws ApiException {
-        try {
-            configurationBusiness.sendResetCode(email);
-            logger.info("Sending reset code for user with email: " + email);
-        } catch (BusinessException e) {
-            throw new ApiException("Error sending reset password", e);
-        }
+    public void sendResetCode(String email) throws VipException {
+        emailBusiness.sendResetCode(email);
+        logger.info("Sending reset code for user with email: " + email);
     }
 
-    public void resetPassword(String email, String code, String password) throws ApiException {
-        try {
-            configurationBusiness.resetPassword(email, code, password);
-            logger.info("Resetting password for user with email: " + email);
-        } catch (BusinessException e) {
-            throw new ApiException("Error resetting password", e);
-        }
+    public void resetPassword(String email, String code, String password) throws VipException {
+        passwordBusiness.reset(email, code, password);
+        logger.info("Resetting password for user with email: " + email);
     }
 }

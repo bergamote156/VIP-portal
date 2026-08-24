@@ -2,8 +2,10 @@ package fr.insalyon.creatis.vip.application.client.view.system.resources;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -17,15 +19,14 @@ import com.smartgwt.client.widgets.events.ClickHandler;
 import com.smartgwt.client.widgets.form.fields.BooleanItem;
 import com.smartgwt.client.widgets.form.fields.SelectItem;
 import com.smartgwt.client.widgets.form.fields.TextItem;
+
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.Engine;
-import fr.insalyon.creatis.vip.application.client.bean.Resource;
-import fr.insalyon.creatis.vip.application.client.bean.ResourceType;
 import fr.insalyon.creatis.vip.application.client.rpc.ApplicationService;
 import fr.insalyon.creatis.vip.application.client.rpc.ApplicationServiceAsync;
 import fr.insalyon.creatis.vip.application.client.view.system.SystemUtils;
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.GroupType;
+import fr.insalyon.creatis.vip.application.models.Engine;
+import fr.insalyon.creatis.vip.application.models.Resource;
+import fr.insalyon.creatis.vip.application.models.ResourceType;
 import fr.insalyon.creatis.vip.core.client.rpc.ConfigurationService;
 import fr.insalyon.creatis.vip.core.client.rpc.ConfigurationServiceAsync;
 import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
@@ -33,6 +34,8 @@ import fr.insalyon.creatis.vip.core.client.view.common.AbstractFormLayout;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
 import fr.insalyon.creatis.vip.core.client.view.util.FieldUtil;
 import fr.insalyon.creatis.vip.core.client.view.util.WidgetUtil;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.GroupType;
 
 public class EditResourceLayout extends AbstractFormLayout {
 
@@ -88,8 +91,8 @@ public class EditResourceLayout extends AbstractFormLayout {
                     @Override
                     public void onClick(ClickEvent event) {
                         List<String> groupsNames = Arrays.asList(groupsList.getValues());
-                        List<Group> groups = groupsNames.stream()
-                            .map((name) -> new Group(groupsMap.get(name), false, GroupType.RESOURCE)).collect(Collectors.toList());
+                        Set<Group> groups = groupsNames.stream()
+                            .map((name) -> new Group(groupsMap.get(name), false, GroupType.RESOURCE)).collect(Collectors.toSet());
                         if (nameField.validate() && configurationField.validate()) {
                             save(new Resource(
                                 nameField.getValueAsString().trim(),
@@ -231,7 +234,7 @@ public class EditResourceLayout extends AbstractFormLayout {
                 List<Group> data = result.stream()
                     .filter((g) -> g.getType() == GroupType.RESOURCE)
                     .collect(Collectors.toList());
-                List<String> formatGroups = SystemUtils.formatGroups(data);
+                List<String> formatGroups = SystemUtils.formatGroups(new HashSet<>(data));
 
                 groupsMap.putAll(IntStream.range(0, Math.min(formatGroups.size(), data.size()))
                     .boxed()

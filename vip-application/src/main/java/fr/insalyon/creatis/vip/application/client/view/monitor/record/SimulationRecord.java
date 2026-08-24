@@ -1,7 +1,7 @@
 package fr.insalyon.creatis.vip.application.client.view.monitor.record;
 
 import com.smartgwt.client.widgets.grid.ListGridRecord;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import java.util.Date;
 
 /**
@@ -14,8 +14,8 @@ public class SimulationRecord extends ListGridRecord {
     }
 
     public SimulationRecord(String simulationName, String application,
-            String applicationVersion, String applicationClass,
-            SimulationStatus status, String simulationId, String user, Date date) {
+                            String applicationVersion, String applicationClass,
+                            WorkflowStatus status, String simulationId, String user, Date date) {
 
         setAttribute("statusIco", "ico_" + status.name().toLowerCase());
         setAttribute("application", application);

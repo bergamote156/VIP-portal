@@ -144,12 +144,12 @@ public class SearchStackSection extends SectionStackSection {
                                 
                 LinkedHashMap<String, String> statusMap = new LinkedHashMap<String, String>();
                 statusMap.put("All", "All");
-                statusMap.put(SimulationStatus.Completed.name(), SimulationStatus.Completed.name());
-                statusMap.put(SimulationStatus.Running.name(), SimulationStatus.Running.name());
-                statusMap.put(SimulationStatus.Killed.name(), SimulationStatus.Killed.name());
-                statusMap.put(SimulationStatus.Failed.name(), SimulationStatus.Failed.name());
+                statusMap.put(WorkflowStatus.Completed.name(), WorkflowStatus.Completed.name());
+                statusMap.put(WorkflowStatus.Running.name(), WorkflowStatus.Running.name());
+                statusMap.put(WorkflowStatus.Killed.name(), WorkflowStatus.Killed.name());
+                statusMap.put(WorkflowStatus.Failed.name(), WorkflowStatus.Failed.name());
                 if (CoreModule.user.isSystemAdministrator()) {
-                    statusMap.put(SimulationStatus.Cleaned.name(), SimulationStatus.Cleaned.name());
+                    statusMap.put(WorkflowStatus.Cleaned.name(), WorkflowStatus.Cleaned.name());
                 }
                 statusItem.setValueMap(statusMap);
                 statusItem.setValue("All");

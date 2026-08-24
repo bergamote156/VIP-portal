@@ -1,12 +1,13 @@
 package fr.insalyon.creatis.vip.social.client.rpc;
 
-import com.google.gwt.user.client.rpc.AsyncCallback;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.social.client.bean.GroupMessage;
-import fr.insalyon.creatis.vip.social.client.bean.Message;
-import fr.insalyon.creatis.vip.social.client.view.SocialException;
 import java.util.Date;
 import java.util.List;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.social.models.GroupMessage;
+import fr.insalyon.creatis.vip.social.models.Message;
 
 /**
  *
@@ -20,7 +21,7 @@ public interface SocialServiceAsync {
 
     public void getGroupMessages(String groupName, Date startDate, AsyncCallback<List<GroupMessage>> asyncCallback);
 
-    public void markMessageAsRead(long id, String receiver, AsyncCallback<Void> asyncCallback);
+    public void markMessageAsRead(long id, AsyncCallback<Void> asyncCallback);
 
     public void removeMessage(long id, AsyncCallback<Void> asyncCallback);
 

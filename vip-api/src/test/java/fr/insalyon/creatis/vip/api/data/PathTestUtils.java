@@ -1,40 +1,10 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.api.data;
 
 import fr.insalyon.creatis.vip.api.model.PathProperties;
 import fr.insalyon.creatis.vip.api.tools.spring.JsonCustomObjectMatcher;
-import fr.insalyon.creatis.vip.datamanager.client.bean.Data;
-import fr.insalyon.creatis.vip.datamanager.client.bean.Data.Type;
+import fr.insalyon.creatis.vip.datamanager.models.Data;
+import fr.insalyon.creatis.vip.datamanager.models.Data.Type;
+
 import org.hamcrest.Matcher;
 
 import java.util.Arrays;
@@ -43,9 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-/**
- * Created by abonnet on 1/23/17.
- */
 public class PathTestUtils {
 
     public static Data vipRoot, user1Dir, user2Dir, groupTestDir, testDir1;
@@ -72,14 +39,14 @@ public class PathTestUtils {
         user1Dir = new Data("Home", Type.folder, 1, null, null, null);
         user2Dir = new Data("Home", Type.folder, 2, null, null, null);
         groupTestDir = new Data("groupTest (group)", Type.folder, 1, null, null, null);
-        testDir1 = new Data("testDir1", Type.folder, 3, null, null, null);
+        testDir1 = new Data("folderTest1", Type.folder, 3, null, null, null);
 
-        testFile1 = new Data("testFile1.xml", Type.file, 42004, "Apr 04 2015", null, null);
-        testFile2 = new Data("testFile2.json", Type.fileSync, 42005, "Dec 21 2016 ", null, null);
-        testFile3 = new Data("testFile3", Type.file, 42006, "Jan 01 2001", null, null);
-        testFile4 = new Data("testFile4.pdf", Type.file, 42007, "Jul 30 2014", null, null);
-        testFile5 = new Data("testFile5.zip", Type.file, 42008, "Jun 15 1999", null, null);
-        testFile6 = new Data("testFile6.unknown", Type.file, 42009, "Aug 28 2014", null, null);
+        testFile1 = new Data("fileTest1.xml", Type.file, 42004, "Apr 04 2015", null, null);
+        testFile2 = new Data("fileTest2.json", Type.fileSync, 42005, "Dec 21 2016 ", null, null);
+        testFile3 = new Data("fileTest3", Type.file, 42006, "Jan 01 2001", null, null);
+        testFile4 = new Data("fileTest4.pdf", Type.file, 42007, "Jul 30 2014", null, null);
+        testFile5 = new Data("fileTest5.zip", Type.file, 42008, "Jun 15 1999", null, null);
+        testFile6 = new Data("fileTest6.unknown", Type.file, 42009, "Aug 28 2014", null, null);
 
         testVipRootPathProperties = getPath(vipRoot, true, null, null, "text/directory");
         testUser1DirPathProperties = getPath(user1Dir, true, null, null, "text/directory");
@@ -136,14 +103,14 @@ public class PathTestUtils {
         if (data == user1Dir) return "/vip/Home";
         if (data == user2Dir) return "/vip/Home";
         if (data == groupTestDir) return "/vip/groupTest (group)";
-        if (data == testDir1) return "/vip/Home/testDir1";
+        if (data == testDir1) return "/vip/Home/folderTest1";
 
-        if (data == testFile1) return "/vip/Home/testFile1.xml";
-        if (data == testFile2) return "/vip/Home/testFile2.json";
-        if (data == testFile3) return "/vip/Home/testDir1/testFile3";
-        if (data == testFile4) return "/vip/Home/testDir1/testFile4.pdf";
-        if (data == testFile5) return "/vip/Home/testDir1/testFile5.zip";
-        if (data == testFile6) return "/vip/groupTest (group)/testFile6.zip";
+        if (data == testFile1) return "/vip/Home/fileTest1.xml";
+        if (data == testFile2) return "/vip/Home/fileTest2.json";
+        if (data == testFile3) return "/vip/Home/folderTest1/fileTest3";
+        if (data == testFile4) return "/vip/Home/folderTest1/fileTest4.pdf";
+        if (data == testFile5) return "/vip/Home/folderTest1/fileTest5.zip";
+        if (data == testFile6) return "/vip/groupTest (group)/fileTest6.zip";
         throw new RuntimeException("Wrong test data");
     }
 

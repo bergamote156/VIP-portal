@@ -1,176 +1,168 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.social.server.business;
-
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
-import fr.insalyon.creatis.vip.core.server.business.ConfigurationBusiness;
-import fr.insalyon.creatis.vip.core.server.business.EmailBusiness;
-import fr.insalyon.creatis.vip.core.server.dao.DAOException;
-import fr.insalyon.creatis.vip.core.server.dao.UsersGroupsDAO;
-import fr.insalyon.creatis.vip.social.client.SocialConstants;
-import fr.insalyon.creatis.vip.social.client.bean.GroupMessage;
-import fr.insalyon.creatis.vip.social.client.bean.Message;
-import fr.insalyon.creatis.vip.social.server.dao.GroupMessageDAO;
-import fr.insalyon.creatis.vip.social.server.dao.MessageDAO;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-/**
- *
- * @author Rafael Ferreira da Silva
- */
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import fr.insalyon.creatis.vip.core.client.DefaultError;
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.server.business.EmailBusiness;
+import fr.insalyon.creatis.vip.core.server.business.EmailTemplateUtils;
+import fr.insalyon.creatis.vip.core.server.business.UserBusiness;
+import fr.insalyon.creatis.vip.core.server.business.base.CommonBusiness;
+import fr.insalyon.creatis.vip.core.server.dao.DAOException;
+import fr.insalyon.creatis.vip.social.client.SocialConstants;
+import fr.insalyon.creatis.vip.social.models.GroupMessage;
+import fr.insalyon.creatis.vip.social.models.Message;
+import fr.insalyon.creatis.vip.social.server.dao.GroupMessageDAO;
+import fr.insalyon.creatis.vip.social.server.dao.MessageDAO;
+
 @Service
 @Transactional
-public class MessageBusiness {
+public class MessageBusiness extends CommonBusiness {
 
-    private MessageDAO messageDAO;
-    private GroupMessageDAO groupMessageDAO;
-    private UsersGroupsDAO usersGroupsDAO;
-    private ConfigurationBusiness configurationBusiness;
-    private EmailBusiness emailBusiness;
+    private final MessageDAO messageDAO;
+    private final GroupMessageDAO groupMessageDAO;
+    private final EmailBusiness emailBusiness;
+    private final UserBusiness userBusiness;
+    private final EmailTemplateUtils emailTemplateUtils;
 
     @Autowired
     public MessageBusiness(
             MessageDAO messageDAO, GroupMessageDAO groupMessageDAO,
-            UsersGroupsDAO usersGroupsDAO, ConfigurationBusiness configurationBusiness, EmailBusiness emailBusiness) {
+            EmailBusiness emailBusiness, UserBusiness userBusiness, EmailTemplateUtils emailTemplateUtils) {
         this.messageDAO = messageDAO;
         this.groupMessageDAO = groupMessageDAO;
-        this.usersGroupsDAO = usersGroupsDAO;
-        this.configurationBusiness = configurationBusiness;
         this.emailBusiness = emailBusiness;
+        this.userBusiness = userBusiness;
+        this.emailTemplateUtils = emailTemplateUtils;
     }
 
-    public List<Message> getMessagesByUser(String email, Date startDate)
-            throws BusinessException {
+    public List<Message> getMessagesByUser(Date startDate)
+            throws VipException {
 
         try {
+            User currentUser = userBusiness.getCurrentUser();
             return messageDAO.getMessagesByUser(
-                    email, SocialConstants.MESSAGE_MAX_DISPLAY, startDate);
+                    currentUser.getEmail(), SocialConstants.MESSAGE_MAX_DISPLAY, startDate);
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public List<Message> getSentMessagesByUser(String email, Date startDate)
-            throws BusinessException {
+    public List<Message> getSentMessagesByUser(Date startDate)
+            throws VipException {
 
         try {
+            User currentUser = userBusiness.getCurrentUser();
             return messageDAO.getSentMessagesByUser(
-                    email, SocialConstants.MESSAGE_MAX_DISPLAY, startDate);
+                    currentUser.getEmail(), SocialConstants.MESSAGE_MAX_DISPLAY, startDate);
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
     public List<GroupMessage> getGroupMessages(String groupName, Date startDate)
-            throws BusinessException {
+            throws VipException {
 
         try {
             return groupMessageDAO.getMessageByGroup(
                     groupName, SocialConstants.MESSAGE_MAX_DISPLAY, startDate);
 
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public void markAsRead(long id, String receiver) throws BusinessException {
+    public void markAsRead(long id) throws VipException {
         try {
-            messageDAO.markAsRead(id, receiver);
+            User currentUser = userBusiness.getCurrentUser();
+            messageDAO.markAsRead(id, currentUser.getEmail());
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public void remove(long id) throws BusinessException {
+    public void remove(long id) throws VipException {
+        assertCurrentUserCanDeleteSentMessage(id);
+
         try {
             messageDAO.remove(id);
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public void removeByReceiver(long id, String receiver) throws BusinessException {
+    public void removeByReceiver(long id) throws VipException {
         try {
-            messageDAO.removeByReceiver(id, receiver);
+            User currentUser = userBusiness.getCurrentUser();
+            messageDAO.removeByReceiver(id, currentUser.getEmail());
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public void removeGroupMessage(long id) throws BusinessException {
+    public void removeGroupMessage(long id) throws VipException {
+        assertCurrentUserCanDeleteGroupMessage(id);
+
         try {
            groupMessageDAO.remove(id);
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
     public void sendMessage(
-            User user, String[] recipients, String subject, String message)
-            throws BusinessException {
+            String[] recipients, String subject, String message)
+            throws VipException {
+
+        User user = userBusiness.getCurrentUser();
+        assertCurrentUserCanSendMessage(user);
 
         try {
-            if (recipients[0].equals("All")) {
+            // Handle "All" special case
+            if (recipients.length > 0 && recipients[0].equals("All")) {
                 List<String> users = new ArrayList<>();
-                for (User u : configurationBusiness.getUsers()) {
+                for (User u : userBusiness.getUsers()) {
                     // Dont send mail to locked users
                     if (!u.isAccountLocked()) {
                         users.add(u.getEmail());
                     }
                 }
                 recipients = users.toArray(new String[]{});
+            } else {
+                // If callers (GWT or others) still send emails, detect that
+                // by checking for an '@' in the first element and treat the
+                // array as emails. Otherwise treat elements as user IDs and
+                // resolve them to emails.
+                List<String> emails = new ArrayList<>();
+                if (recipients.length > 0 && recipients[0].contains("@")) {
+                    // recipients are already emails
+                    for (String email : recipients) {
+                        User recipient = userBusiness.getUserData(email);
+                        if (recipient != null && !recipient.isAccountLocked()) {
+                            emails.add(email);
+                        }
+                    }
+                } else {
+                    // Convert recipient IDs to emails
+                    for (String recipientId : recipients) {
+                        User recipient = userBusiness.get(recipientId);
+                        if (recipient != null && !recipient.isAccountLocked()) {
+                            emails.add(recipient.getEmail());
+                        }
+                    }
+                }
+                recipients = emails.toArray(new String[]{});
             }
 
-            String emailContent = "<html>"
-                    + "<head></head>"
-                    + "<body>"
-                    + "<p>Hello,</p>"
-                    + "<p><b>" + user.getFullName() + "</b> sent you a message on VIP:</p>"
-                    + "<div style=\"background-color: #F2F2F2\">"
-                    + "<br /><b>Subject:</b> " + subject + "<br />"
-                    + "<em>" + message + "</em><br /></div>"
-                    + "<p>Best Regards,</p>"
-                    + "<p>VIP Team</p>"
-                    + "</body>"
-                    + "</html>";
+            String emailContent = emailTemplateUtils.sendMessage(user, subject, message);
 
             for (String email : recipients) {
                 emailBusiness.sendEmail("VIP Message: " + subject + " (" + user.getFullName() + ")",
@@ -183,24 +175,17 @@ public class MessageBusiness {
                 messageDAO.associateMessageToUser(recipient, messageId);
             }
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
     public void copyMessageToVipSupport(
-            User sender, String[] recipients, String subject, String message)
-            throws BusinessException {
+            String[] recipients, String subject, String message)
+            throws VipException {
 
-        String emailContent = "<html>"
-                + "<head></head>"
-                + "<body>"
-                + "<p><b>" + sender.getFullName() + "</b> sent a message to <b>"
-                + Arrays.asList(recipients) + "</b> on VIP:</p>"
-                + "<div style=\"background-color: #F2F2F2\">"
-                + "<br /><b>Subject:</b> " + subject + "<br />"
-                + "<em>" + message + "</em><br /></div>"
-                + "</body>"
-                + "</html>";
+        User sender = userBusiness.getCurrentUser();
+
+        String emailContent = emailTemplateUtils.vipSupportCopy(sender, Arrays.asList(recipients), subject, message);
 
         // if there is only one receiver, name it in subject, otherwise name the sender
         String subjectInfo = recipients.length == 1 ?
@@ -212,20 +197,12 @@ public class MessageBusiness {
     }
 
     public void sendMessageToVipSupport(
-            User user, String subject, String message, List<String> workflowIDs,
-            List<String> simulationNames) throws BusinessException {
+            String subject, String message, List<String> workflowIDs,
+            List<String> simulationNames) throws VipException {
 
-        String emailContent = "<html>"
-                + "<head></head>"
-                + "<body>"
-                + "<p><b>" + user.getFullName() + "</b> sent you a message on VIP:</p>"
-                + "<div style=\"background-color: #F2F2F2\">"
-                + "<br /><b>Subject:</b> " + subject + "<br />"
-                + "<em>" + message + "</em><br /></div>"
-                + "<p>Workflow ID " + workflowIDs + "</p>"
-                + "<p>Simulation Name " + simulationNames + "</p>"
-                + "</body>"
-                + "</html>";
+        User user = userBusiness.getCurrentUser();
+
+        String emailContent = emailTemplateUtils.sendMessageToVipSupport(user, subject, message, workflowIDs, simulationNames);
 
         emailBusiness.sendEmailToAdmins(
             "[VIP Contact] " + subject + " (" + user.getFullName() + ")",
@@ -233,26 +210,18 @@ public class MessageBusiness {
     }
 
     public void sendGroupMessage(
-            User user, String groupName, List<User> users, String subject,
-            String message) throws BusinessException {
+            String groupName, String subject,
+            String message) throws VipException {
+
+        User user = userBusiness.getCurrentUser();
+        assertCurrentUserCanSendGroupMessage(user, groupName);
 
         try {
             groupMessageDAO.add(user.getEmail(), groupName, subject, message);
 
-            String emailContent = "<html>"
-                    + "<head></head>"
-                    + "<body>"
-                    + "<p>Hello,</p>"
-                    + "<p><b>" + user.getFullName() + "</b> sent a message to "
-                    + "the group '" + groupName + "' on VIP:</p>"
-                    + "<p style=\"background-color: #F2F2F2\"><br />"
-                    + "<b>Subject:</b> " + subject + "<br />"
-                    + "<em>" + message + "</em><br /></p>"
-                    + "<p>Best Regards,</p>"
-                    + "<p>VIP Team</p>"
-                    + "</body>"
-                    + "</html>";
+            String emailContent = emailTemplateUtils.sendGroupMessage(user, groupName, subject, message);
 
+            List<User> users = userBusiness.getUsersFromGroup(groupName);
             for (User u : users) {
                 // Dont send mail to locked users and to itself
                 if (!u.isAccountLocked() &&
@@ -262,16 +231,72 @@ public class MessageBusiness {
                 }
             }
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public int verifyMessages(String email) throws BusinessException {
+
+    public int verifyMessages(String email) throws VipException {
 
         try {
             return messageDAO.verifyMessages(email);
         } catch (DAOException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
+        }
+    }
+
+    private void assertCurrentUserCanSendMessage(User user) throws VipException {
+        if (user == null || (!user.isSystemAdministrator() && !user.isDeveloper())) {
+            throw new VipException(DefaultError.ACCESS_DENIED);
+        }
+    }
+
+    private void assertCurrentUserCanSendGroupMessage(User user, String groupName) throws VipException {
+        if (user == null || (!user.isSystemAdministrator() && !user.isGroupAdmin(groupName))) {
+            throw new VipException(DefaultError.ACCESS_DENIED);
+        }
+    }
+
+    private void assertCurrentUserCanDeleteSentMessage(long id) throws VipException {
+        User currentUser = userBusiness.getCurrentUser();
+
+        if (currentUser == null) {
+            throw new VipException(DefaultError.ACCESS_DENIED);
+        }
+        if (currentUser.isSystemAdministrator()) {
+            return;
+        }
+
+        try {
+            Message message = messageDAO.get(id);
+            if (message == null || message.getSender() == null || !currentUser.getEmail().equals(message.getSender().getEmail())) {
+                throw new VipException(DefaultError.ACCESS_DENIED);
+            }
+        } catch (DAOException ex) {
+            throw new VipException(ex);
+        }
+    }
+
+    private void assertCurrentUserCanDeleteGroupMessage(long id) throws VipException {
+        User currentUser = userBusiness.getCurrentUser();
+
+        if (currentUser == null) {
+            throw new VipException(DefaultError.ACCESS_DENIED);
+        }
+        if (currentUser.isSystemAdministrator()) {
+            return;
+        }
+
+        try {
+            GroupMessage groupMessage = groupMessageDAO.get(id);
+            if (groupMessage == null) {
+                throw new VipException(DefaultError.ACCESS_DENIED);
+            }
+            if (!currentUser.isGroupAdmin(groupMessage.getGroupName())) {
+                throw new VipException(DefaultError.ACCESS_DENIED);
+            }
+        } catch (DAOException ex) {
+            throw new VipException(ex);
         }
     }
 }

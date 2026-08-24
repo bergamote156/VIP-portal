@@ -8,7 +8,7 @@ import com.smartgwt.client.widgets.events.ClickEvent;
 import com.smartgwt.client.widgets.events.ClickHandler;
 import com.smartgwt.client.widgets.layout.HLayout;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.view.common.AbstractFormLayout;
 import fr.insalyon.creatis.vip.core.client.view.common.LabelButton;
@@ -29,7 +29,7 @@ public class GateLabGeneralLayout extends AbstractFormLayout {
     private GateLabProgressLayout progressLayout;
     private LabelButton stopAndMergeButton;
 
-    public GateLabGeneralLayout(String simulationID, SimulationStatus status, String date) {
+    public GateLabGeneralLayout(String simulationID, WorkflowStatus status, String date) {
 
         super("100%", "160px");
         this.simulationID = simulationID;
@@ -56,7 +56,7 @@ public class GateLabGeneralLayout extends AbstractFormLayout {
         this.addMember(bottomLayout);
 
         stopAndMergeButton = getStopAndMergeButton();
-        if (status != SimulationStatus.Running) {
+        if (status != WorkflowStatus.Running) {
             stopAndMergeButton.setDisabled(true);
         }
         bottomLayout.addMember(stopAndMergeButton);

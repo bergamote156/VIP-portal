@@ -19,9 +19,9 @@ import com.smartgwt.client.widgets.layout.HLayout;
 import com.smartgwt.client.widgets.layout.VLayout;
 import com.smartgwt.client.widgets.tab.Tab;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.Simulation;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowService;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowServiceAsync;
+import fr.insalyon.creatis.vip.application.models.Workflow;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
 import fr.insalyon.creatis.vip.core.client.view.util.WidgetUtil;
 import fr.insalyon.creatis.vip.application.client.view.monitor.chart.WorkflowStatsChart;
@@ -35,7 +35,7 @@ import java.util.List;
  */
 public class StatsTab extends Tab {
 
-    private List<Simulation> simulationsList;
+    private List<Workflow> simulationsList;
     private VLayout leftVLayout;
     private VLayout rightVLayout;
     private SelectItem chartsItem;
@@ -306,7 +306,7 @@ public class StatsTab extends Tab {
         };
     }
 
-    public void setSimulationsList(List<Simulation> simulationsList) {
+    public void setSimulationsList(List<Workflow> simulationsList) {
         this.simulationsList = simulationsList;
     }
     

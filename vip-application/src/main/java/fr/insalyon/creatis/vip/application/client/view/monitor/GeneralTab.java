@@ -22,7 +22,7 @@ public class GeneralTab extends AbstractCornerTab {
     private InputTreeGrid inputTreeGrid;
     private OutputTreeGrid outputTreeGrid;
     
-    public GeneralTab(String simulationID, SimulationStatus status) {
+    public GeneralTab(String simulationID, WorkflowStatus status) {
 
         this.setTitle(Canvas.imgHTML(ApplicationConstants.ICON_GENERAL));
         this.setPrompt("General Information");

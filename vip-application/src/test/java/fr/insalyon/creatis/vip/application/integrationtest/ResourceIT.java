@@ -5,34 +5,41 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import fr.insalyon.creatis.grida.client.GRIDAClientException;
-import fr.insalyon.creatis.vip.application.client.bean.AppVersion;
-import fr.insalyon.creatis.vip.application.client.bean.Application;
-import fr.insalyon.creatis.vip.application.client.bean.Engine;
-import fr.insalyon.creatis.vip.application.client.bean.Resource;
-import fr.insalyon.creatis.vip.application.client.bean.ResourceType;
+import fr.insalyon.creatis.vip.application.models.AppVersion;
+import fr.insalyon.creatis.vip.application.models.Application;
+import fr.insalyon.creatis.vip.application.models.Engine;
+import fr.insalyon.creatis.vip.application.models.Resource;
+import fr.insalyon.creatis.vip.application.models.ResourceType;
 import fr.insalyon.creatis.vip.application.server.business.AppVersionBusiness;
 import fr.insalyon.creatis.vip.application.server.business.ApplicationBusiness;
 import fr.insalyon.creatis.vip.application.server.business.EngineBusiness;
 import fr.insalyon.creatis.vip.application.server.business.ResourceBusiness;
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.GroupType;
-import fr.insalyon.creatis.vip.core.client.bean.User;
+import fr.insalyon.creatis.vip.core.client.VipException;
 import fr.insalyon.creatis.vip.core.integrationtest.database.BaseSpringIT;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.GroupType;
+import fr.insalyon.creatis.vip.core.models.User;
 
-public class ResourceIT extends BaseApplicationSpringIT {
+public class ResourceIT extends BaseSpringIT {
+    
+    @Autowired private ResourceBusiness resourceBusiness;
+    @Autowired private ApplicationBusiness appBusiness;
+    @Autowired private EngineBusiness engineBusiness;
+    @Autowired private AppVersionBusiness appVersionBusiness;
 
     private Resource resource;
 
     @BeforeEach
     public void setUp() throws Exception {
+        setAdminContext();
         super.setUp();
         resource = new Resource(
             "resourceA", 
@@ -40,30 +47,30 @@ public class ResourceIT extends BaseApplicationSpringIT {
             ResourceType.BATCH, 
             "conf.file",
             new ArrayList<>(),
-            new ArrayList<>());
+            new HashSet<>());
     
         createGroup("test_resource", GroupType.RESOURCE);
         resourceBusiness.add(resource);
     }
 
     @Test
-    public void add() throws BusinessException {
+    public void add() throws VipException {
         assertEquals(1, resourceBusiness.getAll().size());
     }
 
     @Test
-    public void remove() throws BusinessException {
+    public void remove() throws VipException {
         resourceBusiness.remove(resource);
         assertEquals(0, resourceBusiness.getAll().size());
     }
 
     @Test
-    public void addExistingResource() throws BusinessException {
-        assertThrows(BusinessException.class, () -> resourceBusiness.add(resource));
+    public void addExistingResource() throws VipException {
+        assertThrows(VipException.class, () -> resourceBusiness.add(resource));
     }
 
     @Test
-    public void update() throws BusinessException {
+    public void update() throws VipException {
         resource.setType(ResourceType.KUBERNETES);
         resourceBusiness.update(resource);
         resource = resourceBusiness.getAll().get(0);
@@ -72,7 +79,7 @@ public class ResourceIT extends BaseApplicationSpringIT {
     }
 
     @Test
-    public void getAll() throws BusinessException {
+    public void getAll() throws VipException {
         resource.setName("resourceB");
         resourceBusiness.add(resource);
         resource.setName("resourceC");
@@ -82,24 +89,7 @@ public class ResourceIT extends BaseApplicationSpringIT {
     }
 
     @Test
-    public void getAllVisible() throws BusinessException {
-        resource.setName("resourceB");
-        resourceBusiness.add(resource);
-
-        assertEquals(2, resourceBusiness.getAll(true).size());
-    }
-
-    @Test
-    public void getActiveResources() throws BusinessException {
-        resource.setName("resourceB");
-        resource.setStatus(true);
-        resourceBusiness.add(resource);
-
-        assertEquals(1, resourceBusiness.getActiveResources().size());
-    }
-
-    @Test
-    public void getDeleteAddWithGroup() throws BusinessException {
+    public void getDeleteAddWithGroup() throws VipException {
         createGroup("resourcetest");
         Group group = groupBusiness.get("resourcetest");
 
@@ -110,24 +100,24 @@ public class ResourceIT extends BaseApplicationSpringIT {
     }
 
     @Test
-    public void getAvailableForUser() throws BusinessException, GRIDAClientException {
+    public void getAvailableForExecution() throws VipException, GRIDAClientException {
         createGroup("resourcetest");
         createUserInGroup("super@test.insa", "resourcetest");
         Group group = groupBusiness.get("resourcetest");
-        User user = configurationBusiness.getUser("super@test.insa");
+        User user = userBusiness.getUser("super@test.insa");
 
-        resource.setGroups(Arrays.asList(group));
+        resource.setGroups(Set.of(group));
         resourceBusiness.update(resource);
-        assertEquals(0, resourceBusiness.getAvailableForUser(user).size());
+        assertEquals(0, resourceBusiness.getAvailableForExecution(user).size());
 
         resource.setStatus(true);
         resourceBusiness.update(resource);
 
-        assertEquals(1, resourceBusiness.getAvailableForUser(user).size());
+        assertEquals(1, resourceBusiness.getAvailableForExecution(user).size());
     }
 
     @Test
-    public void associateToAppVersion() throws BusinessException {
+    public void associateToAppVersion() throws VipException {
         Application app = new Application("test", "super citation");
         AppVersion appVersion = new AppVersion("test", "0.1", "{}", false);
         Resource bis = new Resource("bis");
@@ -145,7 +135,7 @@ public class ResourceIT extends BaseApplicationSpringIT {
     }
 
     @Test
-    public void dissociateFromAppVersion() throws BusinessException {
+    public void dissociateFromAppVersion() throws VipException {
         Application app = new Application("test", "super citation");
         AppVersion appVersion = new AppVersion("test", "0.1", "{}", false);
 
@@ -165,7 +155,7 @@ public class ResourceIT extends BaseApplicationSpringIT {
     }
 
     @Test
-    public void associateToEngine() throws BusinessException {
+    public void associateToEngine() throws VipException {
         Engine engine = new Engine("bla", "blou", "bli");
         Resource bis = new Resource("bis");
 
@@ -181,7 +171,7 @@ public class ResourceIT extends BaseApplicationSpringIT {
     }
 
     @Test
-    public void dissociateFromEngine() throws BusinessException {
+    public void dissociateFromEngine() throws VipException {
         Engine engine = new Engine("bla", "blou", "bli");
 
         engineBusiness.add(engine);

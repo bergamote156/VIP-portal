@@ -1,6 +1,6 @@
 package fr.insalyon.creatis.vip.application.client.view.monitor.timeline;
 
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import java.util.Date;
 
 /**
@@ -12,6 +12,6 @@ public interface TimelineParserInterface {
     public boolean parse(String applicationName);
 
     public SimulationBoxLayout getLayout(String id, String name, String applicationName,
-            String applicationVersion, String applicationClass, String user, 
-            SimulationStatus status, Date launchedDate);
+                                         String applicationVersion, String applicationClass, String user,
+                                         WorkflowStatus status, Date launchedDate);
 }

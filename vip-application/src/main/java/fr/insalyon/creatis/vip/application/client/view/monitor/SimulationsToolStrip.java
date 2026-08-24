@@ -1,34 +1,3 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.application.client.view.monitor;
 
 import com.google.gwt.user.client.rpc.AsyncCallback;
@@ -39,13 +8,13 @@ import com.smartgwt.client.widgets.events.ClickHandler;
 import com.smartgwt.client.widgets.grid.ListGridRecord;
 import com.smartgwt.client.widgets.toolbar.ToolStrip;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.PublicExecution;
-import fr.insalyon.creatis.vip.application.client.bean.WorkflowData;
 import fr.insalyon.creatis.vip.application.client.rpc.ReproVipService;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowService;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowServiceAsync;
 import fr.insalyon.creatis.vip.application.client.view.monitor.record.SimulationRecord;
 import fr.insalyon.creatis.vip.application.client.view.reprovip.MakeExecutionPublicTab;
+import fr.insalyon.creatis.vip.application.models.PublicExecution;
+import fr.insalyon.creatis.vip.application.models.WorkflowData;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
 import fr.insalyon.creatis.vip.core.client.view.ModalWindow;
@@ -233,9 +202,9 @@ public class SimulationsToolStrip extends ToolStrip {
 
         for (ListGridRecord record : records) {
             SimulationRecord data = (SimulationRecord) record;
-            SimulationStatus status = SimulationStatus.valueOf(data.getStatus());
+            WorkflowStatus status = WorkflowStatus.valueOf(data.getStatus());
 
-            if (status == SimulationStatus.Running) {
+            if (status == WorkflowStatus.Running) {
                 simulationIDs.add(data.getSimulationId());
             }
         }
@@ -274,9 +243,9 @@ public class SimulationsToolStrip extends ToolStrip {
             date = records[0].getAttribute("date");
             simulationName = records[0].getAttribute("simulationName");
             SimulationRecord data = (SimulationRecord) records[0];
-            SimulationStatus status = SimulationStatus.valueOf(data.getStatus());
+            WorkflowStatus status = WorkflowStatus.valueOf(data.getStatus());
 
-            if (status == SimulationStatus.Running) {
+            if (status == WorkflowStatus.Running) {
                 simulationIDs.add(data.getSimulationId());
             }
 
@@ -315,10 +284,10 @@ public class SimulationsToolStrip extends ToolStrip {
 
         for (ListGridRecord record : records) {
             SimulationRecord data = (SimulationRecord) record;
-            SimulationStatus status = SimulationStatus.valueOf(data.getStatus());
+            WorkflowStatus status = WorkflowStatus.valueOf(data.getStatus());
 
-            if (status == SimulationStatus.Completed
-                    || status == SimulationStatus.Killed || status == SimulationStatus.Failed) {
+            if (status == WorkflowStatus.Completed
+                    || status == WorkflowStatus.Killed || status == WorkflowStatus.Failed) {
 
                 simulationIDs.add(data.getSimulationId());
             }
@@ -352,9 +321,9 @@ public class SimulationsToolStrip extends ToolStrip {
 
         for (ListGridRecord record : records) {
             SimulationRecord data = (SimulationRecord) record;
-            SimulationStatus status = SimulationStatus.valueOf(data.getStatus());
+            WorkflowStatus status = WorkflowStatus.valueOf(data.getStatus());
 
-            if (status == SimulationStatus.Cleaned) {
+            if (status == WorkflowStatus.Cleaned) {
                 simulationIDs.add(data.getSimulationId());
             }
         }
@@ -383,9 +352,9 @@ public class SimulationsToolStrip extends ToolStrip {
 
         for (ListGridRecord record : records) {
             SimulationRecord data = (SimulationRecord) record;
-            SimulationStatus status = SimulationStatus.valueOf(data.getStatus());
+            WorkflowStatus status = WorkflowStatus.valueOf(data.getStatus());
 
-            if (status == SimulationStatus.Killed || status == SimulationStatus.Failed) {
+            if (status == WorkflowStatus.Killed || status == WorkflowStatus.Failed) {
                 simulationIDs.add(data.getSimulationId());
             }
         }
@@ -418,9 +387,9 @@ public class SimulationsToolStrip extends ToolStrip {
         } else {
             for (ListGridRecord record : records) {
                 SimulationRecord data = (SimulationRecord) record;
-                SimulationStatus status = SimulationStatus.valueOf(data.getStatus());
+                WorkflowStatus status = WorkflowStatus.valueOf(data.getStatus());
 
-                if (status != SimulationStatus.Completed) {
+                if (status != WorkflowStatus.Completed) {
                     Layout.getInstance().setWarningMessage("You must select only completed executions!");
                     return;
                 } else {

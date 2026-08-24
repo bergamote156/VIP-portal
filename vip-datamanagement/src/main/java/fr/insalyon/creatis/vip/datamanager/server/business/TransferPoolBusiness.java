@@ -1,46 +1,14 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.datamanager.server.business;
 
-import fr.insalyon.creatis.grida.client.GRIDAClientException;
-import fr.insalyon.creatis.grida.client.GRIDAPoolClient;
-import fr.insalyon.creatis.grida.common.bean.Operation;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
-import fr.insalyon.creatis.vip.core.server.business.Server;
-import fr.insalyon.creatis.vip.datamanager.client.DataManagerConstants;
-import fr.insalyon.creatis.vip.datamanager.client.bean.PoolOperation;
-import fr.insalyon.creatis.vip.datamanager.client.bean.PoolOperation.Type;
-import fr.insalyon.creatis.vip.datamanager.client.view.DataManagerException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import fr.insalyon.creatis.vip.core.server.business.base.CommonBusiness;
+import fr.insalyon.creatis.vip.datamanager.models.DataManagementError;
+import fr.insalyon.creatis.vip.datamanager.models.VipStoragePath;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,24 +22,38 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-/**
- *
- * @author Rafael Silva
- */
+import org.apache.commons.io.FilenameUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import fr.insalyon.creatis.grida.client.GRIDAClientException;
+import fr.insalyon.creatis.grida.client.GRIDAPoolClient;
+import fr.insalyon.creatis.grida.common.bean.Operation;
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.server.business.Server;
+import fr.insalyon.creatis.vip.datamanager.client.DataManagerConstants;
+import fr.insalyon.creatis.vip.datamanager.client.view.DataManagerException;
+import fr.insalyon.creatis.vip.datamanager.models.PoolOperation;
+import fr.insalyon.creatis.vip.datamanager.models.PoolOperation.Type;
+
 @Service
 @Transactional
-public class TransferPoolBusiness {
+public class TransferPoolBusiness extends CommonBusiness {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private Server serverConfiguration;
     private LFCBusiness lfcBusiness;
     private GRIDAPoolClient gridaPoolClient;
     private LfcPathsBusiness lfcPathsBusiness;
+    private VipStoragePathFactory vipStoragePathFactory;
 
     @Autowired
-    public TransferPoolBusiness(Server serverConfiguration, LFCBusiness lfcBusiness, GRIDAPoolClient gridaPoolClient, LfcPathsBusiness lfcPathsBusiness) {
-        this.serverConfiguration = serverConfiguration;
+    public TransferPoolBusiness(LFCBusiness lfcBusiness, GRIDAPoolClient gridaPoolClient, LfcPathsBusiness lfcPathsBusiness, VipStoragePathFactory vipStoragePathFactory) {
+        this.vipStoragePathFactory = vipStoragePathFactory;
         this.lfcBusiness = lfcBusiness;
         this.gridaPoolClient = gridaPoolClient;
         this.lfcPathsBusiness = lfcPathsBusiness;
@@ -79,7 +61,7 @@ public class TransferPoolBusiness {
 
     public List<PoolOperation> getOperations(
             String email, Date date, String currentUserFolder)
-            throws BusinessException {
+            throws VipException {
 
         try {
             List<PoolOperation> poolOperations = new ArrayList<>();
@@ -94,15 +76,15 @@ public class TransferPoolBusiness {
             return poolOperations;
 
         } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         } catch (GRIDAClientException ex) {
             logger.error("Error getting operations for {} since {}", email, date, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
     public List<PoolOperation> getOperations(String currentUserFolder)
-            throws BusinessException {
+            throws VipException {
 
         try {
             List<PoolOperation> poolOperations = new ArrayList<>();
@@ -114,36 +96,47 @@ public class TransferPoolBusiness {
 
             return poolOperations;
         } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         } catch (GRIDAClientException ex) {
             logger.error("Error getting all operations", ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
     public PoolOperation getOperationById(
             String operationId, String currentUserFolder)
-            throws BusinessException {
+            throws VipException {
 
         try {
             return processOperation(
                     gridaPoolClient.getOperationById(operationId),
                     currentUserFolder);
         } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         } catch (GRIDAClientException ex) {
             logger.error("Error getting operation {}", operationId, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex.getCause() != null ? ex.getCause() : ex);
+        }
+    }
+
+    public PoolOperation.Status getOperationStatus(String operationId) throws VipException {
+        Operation operation;
+        try {
+            operation = gridaPoolClient.getOperationById(operationId);
+            return PoolOperation.Status.valueOf(operation.getStatus().name());
+        } catch (GRIDAClientException ex) {
+            logger.error("Error getting operation status {}", operationId, ex);
+            throw new VipException(ex.getCause() != null ? ex.getCause() : ex);
         }
     }
 
     public PoolOperation getDownloadPoolOperation(String operationId)
-            throws BusinessException {
+            throws VipException {
         try {
             Operation operation = gridaPoolClient.getOperationById(operationId);
             if (operation.getType() != Operation.Type.Download) {
                 logger.error("Not a download operation {}", operationId);
-                throw new BusinessException("Wrong operation type for download");
+                throw new VipException(DataManagementError.INVALID_OPERATION, operationId, "Not a download operation");
             }
             SimpleDateFormat dateFormat = new SimpleDateFormat("MMMM d, yyyy HH:mm");
             PoolOperation.Status status = PoolOperation.Status.valueOf(operation.getStatus().name());
@@ -152,7 +145,7 @@ public class TransferPoolBusiness {
                     Type.Download, status, operation.getUser(), operation.getProgress());
         } catch (GRIDAClientException ex) {
             logger.error("Error getting download operation {}", operationId, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
@@ -189,7 +182,7 @@ public class TransferPoolBusiness {
                 type, status, operation.getUser(), operation.getProgress());
     }
 
-    public void removeOperations(List<String> ids) throws BusinessException {
+    public void removeOperations(List<String> ids) throws VipException {
 
         try {
 
@@ -199,53 +192,57 @@ public class TransferPoolBusiness {
 
         } catch (GRIDAClientException ex) {
             logger.error("Error removing operations {}", ids, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public void removeUserOperations(String email) throws BusinessException {
+    public void removeUserOperations(String email) throws VipException {
 
         try {
             gridaPoolClient.removeOperationsByUser(email);
 
         } catch (GRIDAClientException ex) {
             logger.error("Error removing operations for {}", email, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public void removeOperationById(String id) throws BusinessException {
+    public void removeOperationById(String id) throws VipException {
 
         try {
             gridaPoolClient.removeOperationById(id);
 
         } catch (GRIDAClientException ex) {
             logger.error("Error removing operations {}", id, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public String downloadFile(User user, String remoteFile) throws BusinessException {
+
+    public String downloadFile(User user, String path) throws VipException {
+        return downloadFile(vipStoragePathFactory.create(path));
+    }
+
+    public String downloadFile(VipStoragePath path) throws VipException {
 
         try {
-            lfcBusiness.getModificationDate(user, remoteFile);
+            lfcBusiness.getModificationDate(path);
 
-            String remotePath = lfcPathsBusiness.parseBaseDir(user, remoteFile);
+            String remotePath = path.getRealPathString();
             String localDirPath = lfcPathsBusiness.getLocalDirForGridaFileDownload(remotePath);
 
-            return gridaPoolClient.downloadFile(remotePath, localDirPath, user.getEmail());
-
+            return gridaPoolClient.downloadFile(remotePath, localDirPath, getUserEmail());
         } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         } catch (GRIDAClientException ex) {
-            logger.error("Error downloading file {} for {}", remoteFile, user, ex);
-            throw new BusinessException(ex);
+            logger.error("Error downloading file {} for {}", path, getUserEmail(), ex);
+            throw new VipException(ex);
         }
     }
 
     public String downloadFiles(
             User user, List<String> remoteFiles, String packName)
-            throws BusinessException {
+            throws VipException {
 
         try {
             lfcBusiness.getModificationDate(user, remoteFiles);
@@ -262,15 +259,15 @@ public class TransferPoolBusiness {
                     localDirPath, user.getEmail());
 
         } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         } catch (GRIDAClientException ex) {
             logger.error("Error downloading files {} for {}", remoteFiles, user, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
     public String downloadFolder(User user, String remoteFolder)
-            throws BusinessException {
+            throws VipException {
 
         try {
             lfcBusiness.getModificationDate(user, remoteFolder);
@@ -281,43 +278,47 @@ public class TransferPoolBusiness {
                     remotePath, localDirPath, user.getEmail());
 
         } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         } catch (GRIDAClientException ex) {
             logger.error("Error downloading folder {} for {}", remoteFolder, user, ex);
-            throw new BusinessException(ex);
+            throw new VipException(ex);
         }
     }
 
-    public String uploadFile(User user, String localFilePath, String remoteFile)
-            throws BusinessException {
+
+    public String uploadFile(User user, String localFilePath, String remoteFile) throws VipException {
+        return uploadFile(localFilePath, vipStoragePathFactory.create(remoteFile));
+    }
+
+    public String uploadFile(String localFilePath, VipStoragePath remotePath)
+            throws VipException {
 
         try {
-            String remotePath = lfcPathsBusiness.parseBaseDir(user, remoteFile);
-            return gridaPoolClient.uploadFile(localFilePath, remotePath, user.getEmail());
-        } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
+            String remotePathString = remotePath.getRealPathString();
+            return gridaPoolClient.uploadFile(localFilePath, remotePathString, getUserEmail());
         } catch (GRIDAClientException ex) {
             logger.error("Error uploading file {} to {} for {}",
-                    localFilePath, remoteFile, user, ex);
-            throw new BusinessException(ex);
+                    localFilePath, remotePath, getUserEmail(), ex);
+            throw new VipException(ex);
         }
     }
 
-    public void delete(User user, String... paths)
-        throws BusinessException {
+    public void delete(User user, String... pathStrings) throws VipException {
+        List<VipStoragePath> paths = new ArrayList<>();
+        for (String pathString : pathStrings) {
+            paths.add(vipStoragePathFactory.create(pathString));
+        }
+        delete(paths.toArray(new VipStoragePath[]{}));
+    }
 
+    public void delete(VipStoragePath... paths) throws VipException {
         try {
-
-            for (String path : paths) {
-                String remotePath = lfcPathsBusiness.parseBaseDir(user, path);
-                gridaPoolClient.delete(remotePath, user.getEmail());
+            for (VipStoragePath path : paths) {
+                gridaPoolClient.delete(path.getRealPathString(), getUserEmail());
             }
-        } catch (DataManagerException ex) {
-            throw new BusinessException(ex);
         } catch (GRIDAClientException ex) {
-            logger.error("Error deleting files {} for {}",
-                    Arrays.toString(paths), user, ex);
-            throw new BusinessException(ex);
+            logger.error("Error deleting files {} for {}", Arrays.toString(paths), getUserEmail(), ex);
+            throw new VipException(ex);
         }
     }
 }

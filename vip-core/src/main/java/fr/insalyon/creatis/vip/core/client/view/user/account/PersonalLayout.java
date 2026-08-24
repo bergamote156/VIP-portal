@@ -10,17 +10,16 @@ import com.smartgwt.client.widgets.form.fields.SelectItem;
 import com.smartgwt.client.widgets.form.fields.TextItem;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.Modules;
-import fr.insalyon.creatis.vip.core.client.bean.User;
 import fr.insalyon.creatis.vip.core.client.rpc.ConfigurationService;
 import fr.insalyon.creatis.vip.core.client.rpc.ConfigurationServiceAsync;
 import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
 import fr.insalyon.creatis.vip.core.client.view.common.AbstractFormLayout;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
-import fr.insalyon.creatis.vip.core.client.view.user.UpgradeLevelLayout;
 import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
 import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
 import fr.insalyon.creatis.vip.core.client.view.util.FieldUtil;
 import fr.insalyon.creatis.vip.core.client.view.util.WidgetUtil;
+import fr.insalyon.creatis.vip.core.models.User;
 
 /**
  *
@@ -73,7 +72,7 @@ public class PersonalLayout extends AbstractFormLayout {
                                     institutionField.getValueAsString().trim(),
                                     UserLevel.valueOf(levelLabel.getContents()),
                                     CountryCode.valueOf(countryField.getValueAsString()));
-                            user.setFolder(CoreModule.user.getFolder());
+                            user.setId(CoreModule.user.getId());
 
                             ConfigurationServiceAsync service = ConfigurationService.Util.getInstance();
                             final AsyncCallback<User> callback = new AsyncCallback<User>() {
@@ -119,7 +118,7 @@ public class PersonalLayout extends AbstractFormLayout {
                     new ClickHandler() {
                         @Override
                         public void onClick(ClickEvent event) {
-                            new UpgradeLevelLayout(event.getX(), event.getY()).show();
+                            com.google.gwt.user.client.Window.open("https://github.com/virtual-imaging-platform/VIP-portal/wiki/User-levels", "_blank", "");
                         }
                     });
             levelLabel.setPrompt("Upgrade your Account!");

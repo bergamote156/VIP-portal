@@ -1,39 +1,4 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.application.server.business.simulation.parser;
-
-import fr.insalyon.creatis.vip.core.client.bean.Triplet;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
-import fr.insalyon.creatis.vip.datamanager.client.view.DataManagerException;
 
 import java.io.File;
 import java.io.FileReader;
@@ -45,7 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import fr.insalyon.creatis.vip.datamanager.server.business.LfcPathsBusiness;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParserFactory;
 
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -60,10 +26,14 @@ import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.DefaultHandler;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParserFactory;
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.models.Triplet;
+import fr.insalyon.creatis.vip.datamanager.client.view.DataManagerException;
+import fr.insalyon.creatis.vip.datamanager.server.business.LfcPathsBusiness;
+import fr.insalyon.creatis.vip.core.server.business.CoreUtil;
 
 /**
  * Parse a m2 input file.
@@ -97,7 +67,7 @@ public class InputFileParser {
 
     // If the filePath do not contain an extension, then JSON and XML will be tested
     // the first founded file will be used
-    public Map<String, String> parse(Path path) throws BusinessException {
+    public List<Map<String, String>> parse(Path path) throws VipException {
         String ext = FilenameUtils.getExtension(path.toString());
 
         if (ext.isEmpty()) {
@@ -117,48 +87,72 @@ public class InputFileParser {
             case "json":
                 return handleJSON(path.toFile());
             default:
-                throw new BusinessException("Cannot find inputs file at this location: " + path);
+                throw new VipException("Cannot find inputs file at this location: " + path);
         }
     }
-
-    public Map<String, String> handleXML(File file) throws BusinessException {
+    public List<Map<String, String>> handleXML(File file) throws VipException {
         try {
             XMLHandler handler = new XMLHandler();
-
-            SAXParserFactory parserFactory = SAXParserFactory.newInstance();
-            parserFactory.setNamespaceAware(true);
+            SAXParserFactory parserFactory = CoreUtil.getSecureSAXParserFactory();
 
             XMLReader reader = parserFactory.newSAXParser().getXMLReader();
             reader.setContentHandler(handler);
             reader.parse(new InputSource(new FileReader(file)));
 
-            return inputs;
-        } catch (IOException | SAXException | ParserConfigurationException e) {
+            return List.of(inputs);
+        } 
+        catch (IOException | SAXException | ParserConfigurationException e) {
             logger.error("Error parsing {}", file.getName(), e);
-            throw new BusinessException(e);
+            throw new VipException(e);
         }
     }
-
-    public Map<String, String> handleJSON(File file) throws BusinessException {
+    public List<Map<String, String>> handleJSON(File file) throws VipException {
         ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, String>> inputsData = new ArrayList<>();
 
         try {
-            Map<String, List<String>> data = mapper.readValue(file, new TypeReference<Map<String, List<String>>>() {
-            });
+            JsonNode root = mapper.readTree(file);
+            List<Map<String, List<String>>> inputMaps;
+            if (root.isArray()) {
+                // List of input maps format (API/Executions)
+                inputMaps = mapper.convertValue(root, new TypeReference<>() {});
+            } else if (root.isObject()) {
+                // Single input map format (UI/Simulations)
+                Map<String, List<String>> data = mapper.convertValue(root, new TypeReference<>() {});
+                inputMaps = List.of(data);
+            }
+            else {
+                throw new IOException("Invalid JSON format");
+            }
+            // Create result List of input maps, keep same amount of maps and apply PathHandler/List logic to their values
 
-            data.forEach((name, items) -> {
-                if (items.size() == 1) {
-                    String val = items.get(0);
-                    inputs.put(name, pathHandler(val));
-                } else {
-                    handleList(name, items);
-                }
-            });
+            for (Map<String, List<String>> inputMap : inputMaps) {
+                Map<String, String> parsed = new HashMap<>();
+                inputMap.forEach((name, items) -> {
+                    // Filter out  empty strings
+                    List<String> filteredItems = items.stream()
+                            .filter(item -> item != null && !item.isEmpty())
+                            .toList();
+
+                    if (filteredItems.isEmpty()) {
+                        return;
+                    }
+
+                    if (filteredItems.size() == 1) {
+                        parsed.put(name, pathHandler(filteredItems.getFirst()));
+                    } else {
+                        parsed.put(name, handleList(filteredItems));
+                    }
+                });
+
+                inputsData.add(parsed);
+            }
         } catch (IOException e) {
             logger.error("Error parsing {}", file.getName(), e);
-            throw new BusinessException(e);
+            throw new VipException(e);
         }
-        return inputs;
+
+        return inputsData;
     }
 
     private String pathHandler(String path) {
@@ -208,13 +202,13 @@ public class InputFileParser {
                 .collect(Collectors.joining("; "));
     }
 
-    private void handleList(String name, List<String> items) {
+    private String handleList(List<String> items) {
         Triplet<Double, Double, Double> startStopStep = getStartStopStep(items);
         if (startStopStep == null) {
-            inputs.put(name, formatListString(items));
+            return formatListString(items);
         } else {
-            inputs.put(name, "Start: " + startStopStep.getFirst() + " - Stop: "
-                    + startStopStep.getSecond() + " - Step: " + startStopStep.getThird());
+            return "Start: " + startStopStep.getFirst() + " - Stop: "
+                    + startStopStep.getSecond() + " - Step: " + startStopStep.getThird();
         }
     }
 
@@ -246,7 +240,7 @@ public class InputFileParser {
                     inputs.put(name, pathHandler(path));
 
                 } else {
-                    handleList(name, values);
+                    inputs.put(name, handleList(values));
                 }
             } else if (localName.equals("item")) {
                 values.add(itemContent.toString().trim());

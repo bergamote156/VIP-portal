@@ -6,10 +6,11 @@ import com.smartgwt.client.types.Overflow;
 import com.smartgwt.client.types.VerticalAlignment;
 import com.smartgwt.client.widgets.Label;
 import com.smartgwt.client.widgets.layout.VLayout;
-import fr.insalyon.creatis.vip.application.client.bean.Activity;
+
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowService;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import fr.insalyon.creatis.vip.application.client.view.monitor.job.JobStatus;
+import fr.insalyon.creatis.vip.application.models.Activity;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
 import java.util.List;
 
@@ -20,12 +21,12 @@ import java.util.List;
 public class ProgressLayout extends VLayout {
 
     protected String simulationID;
-    protected SimulationStatus status;
+    protected WorkflowStatus status;
     protected VLayout barLayout;
     protected Label progressLabel;
     protected Label statusLabel;
 
-    public ProgressLayout(String simulationID, SimulationStatus status) {
+    public ProgressLayout(String simulationID, WorkflowStatus status) {
 
         this.simulationID = simulationID;
         this.status = status;
@@ -112,10 +113,10 @@ public class ProgressLayout extends VLayout {
                         barLayout.setWidth100();
                         statusLabel.setContents("<font color=\"#666666\">Execution completed!</font>");
                     } else {
-                        if (status == SimulationStatus.Killed) {
+                        if (status == WorkflowStatus.Killed) {
                             barLayout.setBackgroundColor(JobStatus.Failed.getColor());
                             sb.append(". <b>Execution killed!</b>");
-                        } else if (status == SimulationStatus.Failed) {
+                        } else if (status == WorkflowStatus.Failed) {
                             barLayout.setBackgroundColor(JobStatus.Failed.getColor());
                             sb.append(". <b>Execution Failed!</b>");
                         }

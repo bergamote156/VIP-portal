@@ -1,27 +1,24 @@
 package fr.insalyon.creatis.vip.api.business;
 
-import fr.insalyon.creatis.vip.core.server.exception.ApiException;
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.GroupType;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
-import fr.insalyon.creatis.vip.core.integrationtest.database.BaseSpringIT;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
-import fr.insalyon.creatis.vip.core.server.business.ConfigurationBusiness;
+import java.sql.Timestamp;
+
+import fr.insalyon.creatis.vip.core.models.Group;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.sql.Timestamp;
-import java.util.Date;
-
-import static fr.insalyon.creatis.vip.core.client.view.user.UserLevel.Beginner;
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
+import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
+import fr.insalyon.creatis.vip.core.integrationtest.database.BaseSpringIT;
+import fr.insalyon.creatis.vip.core.models.GroupType;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.server.business.CoreUtil;
 
 public class ApiUserBusinessIT extends BaseSpringIT {
 
     @Autowired private ApiUserBusiness apiUserBusiness;
-    @Autowired private ConfigurationBusiness configurationBusiness;
 
     private Group group1;
     private User user1;
@@ -32,36 +29,39 @@ public class ApiUserBusinessIT extends BaseSpringIT {
 
         // Create test group
         group1 = new Group("group1", true, GroupType.getDefault());
-        groupBusiness.add(group1);
+        asAdminContext(() -> {
+           groupBusiness.add(group1); 
+        });
 
         // Create test users
-        user1 = new User("firstName", "lastName", "email1@test.fr", "test1@test.fr", "institution", "password", false, "code", "folder", "session", new Date(), new Date(), Beginner, CountryCode.fr, 1, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()), 0, false);
-        apiUserBusiness.signup(user1, "comment");
+        user1 = new User("firstName", "lastName", emailUser1, "institution", CountryCode.fr);
+        user1 = apiUserBusiness.signup(user1, "comment");
 
     }
 
     @Test
-    public void testInitialization() throws ApiException, BusinessException {
-        Assertions.assertEquals(2, configurationBusiness.getUsers().size(), "Incorrect number of users"); // admin + user1
+    public void testInitialization() throws VipException {
+        Assertions.assertEquals(2, userBusiness.getUsers().size(), "Incorrect number of users"); // admin + user1
     }
 
     @Test
-    public void testSignup() throws ApiException, BusinessException {
-        User user2 = new User("firstName2", "lastName2", "email2@test.fr", "test3@test.fr", "institution", "password", false, "code", "folder", "session", new Date(), new Date(), Beginner, CountryCode.fr, 1, new Timestamp(System.currentTimeMillis()), new Timestamp(System.currentTimeMillis()), 0, false);
+    public void testSignup() throws VipException {
+        User user2 = new User("firstName2", "lastName2", emailUser2, "institution", CountryCode.fr);
         apiUserBusiness.signup(user2, "comment");
-        Assertions.assertEquals(3, configurationBusiness.getUsers().size(), "Incorrect number of users");
+
+        Assertions.assertEquals(3, userBusiness.getUsers().size(), "Incorrect number of users");
     }
 
     @Test
-    public void testResetPassword() throws ApiException, BusinessException {
-        apiUserBusiness.resetPassword("email1@test.fr", configurationBusiness.getUser("email1@test.fr").getCode(), "test new password");
+    public void testResetPassword() throws VipException {
+        apiUserBusiness.resetPassword(emailUser1, userBusiness.getUser(emailUser1).getCode(), "test new password");
     }
 
     @Test
-    public void testResetCode() throws ApiException, BusinessException {
-        String oldCode = configurationBusiness.getUser("email1@test.fr").getCode();
-        apiUserBusiness.sendResetCode("email1@test.fr");
-        String newCode = configurationBusiness.getUser("email1@test.fr").getCode();
+    public void testResetCode() throws VipException {
+        String oldCode = userBusiness.getUser(emailUser1).getCode();
+        apiUserBusiness.sendResetCode(emailUser1);
+        String newCode = userBusiness.getUser(emailUser1).getCode();
         Assertions.assertFalse(oldCode.equals(newCode));
     }
 

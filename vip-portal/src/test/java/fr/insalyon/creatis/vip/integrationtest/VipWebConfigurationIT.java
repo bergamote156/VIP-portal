@@ -5,12 +5,13 @@ import fr.insalyon.creatis.vip.core.server.business.Server;
 import fr.insalyon.creatis.vip.core.server.model.Module;
 import fr.insalyon.creatis.vip.core.server.model.SupportedTransferProtocol;
 import fr.insalyon.creatis.vip.core.server.security.common.SpringPrincipalUser;
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.User;
 import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.User;
 import fr.insalyon.creatis.vip.core.server.SpringCoreConfig;
 import fr.insalyon.creatis.vip.api.SpringRestApiConfig;
-import fr.insalyon.creatis.vip.core.server.business.ConfigurationBusiness;
+import fr.insalyon.creatis.vip.core.server.business.AuthenticationBusiness;
+import fr.insalyon.creatis.vip.core.server.business.CoreUtil;
 import fr.insalyon.creatis.vip.core.server.business.EmailBusiness;
 
 import org.hamcrest.Matchers;
@@ -56,8 +57,7 @@ public class VipWebConfigurationIT {
     @Autowired private Server server;
     @Autowired private GRIDAClient gridaClient;
     @Autowired private EmailBusiness emailBusiness;
-    @Autowired private ConfigurationBusiness configurationBusiness;
-
+    @Autowired private AuthenticationBusiness authenticationBusiness;
 
     @BeforeEach
     public final void setup() {
@@ -73,10 +73,10 @@ public class VipWebConfigurationIT {
         Mockito.doReturn(new String[]{"test@admin.test"}).when(emailBusiness).getAdministratorsEmails();
         User newUser = new User("firstName",
                 "LastName", "testEmail@test.tst", "Test institution",
-                "testPassword", CountryCode.fr,
-                null);
+                CountryCode.fr);
+        newUser.setPassword("testPassword");
         Mockito.when(gridaClient.exist(anyString())).thenReturn(true, false);
-        configurationBusiness.signup(newUser, "", (Group) null);
+        newUser = authenticationBusiness.signup(newUser, "");
         mockMvc.perform(get("/rest/pipelines")
             .with(SecurityMockMvcRequestPostProcessors.user(new SpringPrincipalUser(newUser))))
             .andDo(print())

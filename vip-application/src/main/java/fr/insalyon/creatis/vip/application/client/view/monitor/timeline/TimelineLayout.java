@@ -12,8 +12,8 @@ import com.smartgwt.client.widgets.events.ClickEvent;
 import com.smartgwt.client.widgets.events.ClickHandler;
 import com.smartgwt.client.widgets.layout.VLayout;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.Simulation;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
+import fr.insalyon.creatis.vip.application.models.Workflow;
 import fr.insalyon.creatis.vip.application.server.rpc.WorkflowServiceImpl;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
@@ -83,7 +83,7 @@ public class TimelineLayout extends VLayout {
 
     private void loadData() {
 
-        AsyncCallback<List<Simulation>> callback = new AsyncCallback<List<Simulation>>() {
+        AsyncCallback<List<Workflow>> callback = new AsyncCallback<List<Workflow>>() {
             @Override
             public void onFailure(Throwable caught) {
                 Layout.getInstance().setWarningMessage("Unable to load executions:<br />" + caught.getMessage());
@@ -91,9 +91,9 @@ public class TimelineLayout extends VLayout {
             }
 
             @Override
-            public void onSuccess(List<Simulation> result) {
+            public void onSuccess(List<Workflow> result) {
                 if (!result.isEmpty()) {
-                    for (Simulation simulation : result) {
+                    for (Workflow simulation : result) {
                         boolean exists = false;
                         int position = 0;
                         for (Canvas canvas : simulationsLayout.getChildren()) {
@@ -103,22 +103,22 @@ public class TimelineLayout extends VLayout {
                                     exists = true;
                                     sbl.updateStatus(simulation.getStatus());
                                     break;
-                                } else if (simulation.getDate().before(sbl.getLaunchedDate())) {
+                                } else if (simulation.getStartDate().before(sbl.getLaunchedDate())) {
                                     position = simulationsLayout.getMemberNumber(canvas) + 1;
                                 }
                             }
                         }
                         if (!exists) {
-                            if(simulation.getStatus()!=SimulationStatus.Cleaned ||  CoreModule.user.isSystemAdministrator()) {
+                            if(simulation.getStatus()!= WorkflowStatus.Cleaned ||  CoreModule.user.isSystemAdministrator()) {
                                 simulationsLayout.addMember(TimelineParser.getInstance().parse(
                                         simulation.getID(),
-                                        simulation.getSimulationName(),
+                                        simulation.getWorkflowName(),
                                         simulation.getApplicationName(),
                                         simulation.getApplicationVersion(),
-                                        simulation.getApplicationClass(),
-                                        simulation.getUserName(),
+                                        "",
+                                        simulation.getUserFullName(),
                                         simulation.getStatus(),
-                                        simulation.getDate()), position);
+                                        simulation.getStartDate()), position);
                             }
                         }
                     }
@@ -131,7 +131,7 @@ public class TimelineLayout extends VLayout {
 
     private void loadMoreData() {
 
-        AsyncCallback<List<Simulation>> callback = new AsyncCallback<List<Simulation>>() {
+        AsyncCallback<List<Workflow>> callback = new AsyncCallback<List<Workflow>>() {
             @Override
             public void onFailure(Throwable caught) {
                 setLoading(false);
@@ -139,22 +139,22 @@ public class TimelineLayout extends VLayout {
             }
 
             @Override
-            public void onSuccess(List<Simulation> result) {
+            public void onSuccess(List<Workflow> result) {
 
                 setLoading(false);
                 if (!result.isEmpty()) {    
                     simulationsLayout.removeChild(loadMoreLabel);
-                    for (Simulation simulation : result) {
-                        if(simulation.getStatus()!=SimulationStatus.Cleaned ||  CoreModule.user.isSystemAdministrator()) {
+                    for (Workflow simulation : result) {
+                        if(simulation.getStatus()!= WorkflowStatus.Cleaned ||  CoreModule.user.isSystemAdministrator()) {
                             simulationsLayout.addMember(TimelineParser.getInstance().parse(
                                     simulation.getID(),
-                                    simulation.getSimulationName(),
+                                    simulation.getWorkflowName(),
                                     simulation.getApplicationName(),
                                     simulation.getApplicationVersion(),
-                                    simulation.getApplicationClass(),
-                                    simulation.getUserName(),
+                                    "",
+                                    simulation.getUserFullName(),
                                     simulation.getStatus(),
-                                    simulation.getDate()));
+                                    simulation.getStartDate()));
                         }
                     }
                     simulationsLayout.addMember(loadMoreLabel);

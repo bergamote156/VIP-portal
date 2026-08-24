@@ -3,11 +3,11 @@ package fr.insalyon.creatis.vip.application.client.view.monitor.general;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.smartgwt.client.widgets.Label;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.Simulation;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowService;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowServiceAsync;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import fr.insalyon.creatis.vip.application.client.view.monitor.progress.ProgressLayout;
+import fr.insalyon.creatis.vip.application.models.Workflow;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.view.common.AbstractFormLayout;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
@@ -22,7 +22,7 @@ public class GeneralLayout extends AbstractFormLayout {
     private Label generalLabel;
     private ProgressLayout progressLayout;
 
-    public GeneralLayout(String simulationID, SimulationStatus status) {
+    public GeneralLayout(String simulationID, WorkflowStatus status) {
 
         super("100%", "140px");
         this.simulationID = simulationID;
@@ -43,14 +43,14 @@ public class GeneralLayout extends AbstractFormLayout {
     private void loadData() {
 
         WorkflowServiceAsync service = WorkflowService.Util.getInstance();
-        final AsyncCallback<Simulation> callback = new AsyncCallback<Simulation>() {
+        final AsyncCallback<Workflow> callback = new AsyncCallback<Workflow>() {
             @Override
             public void onFailure(Throwable caught) {
                 Layout.getInstance().setWarningMessage("Unable to load general information:<br />" + caught.getMessage());
             }
 
             @Override
-            public void onSuccess(Simulation result) {
+            public void onSuccess(Workflow result) {
                 
                 StringBuilder sb = new StringBuilder();
                 sb.append("<font color=\"#333333\"><b>");
@@ -58,11 +58,11 @@ public class GeneralLayout extends AbstractFormLayout {
                 sb.append(" ");
                 sb.append(result.getApplicationVersion());
                 sb.append("</b> launched on <b>");
-                sb.append(result.getDate().toString());
+                sb.append(result.getStartDate().toString());
                 sb.append("</b>");
                 if (CoreModule.user.isSystemAdministrator()) {
                     sb.append(" by <b>");
-                    sb.append(result.getUserName());
+                    sb.append(result.getUserFullName());
                     sb.append("</b> (");
                     sb.append(result.getID());
                     sb.append(")</font>");

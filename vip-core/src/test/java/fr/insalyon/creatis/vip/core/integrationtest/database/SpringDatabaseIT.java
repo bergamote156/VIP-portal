@@ -1,32 +1,34 @@
 package fr.insalyon.creatis.vip.core.integrationtest.database;
 
-import fr.insalyon.creatis.grida.client.GRIDAClientException;
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.integrationtest.ServerMockConfig;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.function.Supplier;
+
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.test.jdbc.JdbcTestUtils;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.function.Supplier;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
+import fr.insalyon.creatis.grida.client.GRIDAClientException;
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.core.server.business.ProxyBusiness;
+import fr.insalyon.creatis.vip.core.server.business.TermsOfUseBusiness;
 
 /**
  * Integration tests that verify the spring database/transactions configuration
@@ -35,7 +37,10 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
  * These tests are ordered as this is needed for the last ones.
  */
 @TestMethodOrder(OrderAnnotation.class)
-public class SpringDatabaseIT extends BaseSpringIT{
+public class SpringDatabaseIT extends BaseSpringIT {
+
+    @Autowired private ProxyBusiness configurationBusiness;
+    @Autowired private TermsOfUseBusiness termsOfUseBusiness;
     
     /*
         verify database init and that only one connection is shared in a test
@@ -43,7 +48,8 @@ public class SpringDatabaseIT extends BaseSpringIT{
 
     @Test
     @Order(1)
-    public void testTestConfig() throws BusinessException {
+    public void testTestConfig() throws Exception {
+        setAdminContext();
         // verify the vip-support group created on init is present
         assertNotNull(configurationBusiness);
         List<Group> groups = groupBusiness.get();
@@ -59,7 +65,7 @@ public class SpringDatabaseIT extends BaseSpringIT{
         verify simple database operation
     @Test
     @Order(2)
-    public void addNewAccount() throws BusinessException {
+    public void addNewAccount() throws VipException {
         List<Account> accounts = configurationBusiness.getAccounts();
         assertEquals(0, accounts.size());
         configurationBusiness.addAccount("test Account", Collections.emptyList());
@@ -73,7 +79,7 @@ public class SpringDatabaseIT extends BaseSpringIT{
         Verify the account is not there anymore as last test method is Transactional and rollbacked
     @Test
     @Order(3)
-    public void isAccountStillThere() throws BusinessException {
+    public void isAccountStillThere() throws VipException {
         List<Account> accounts = configurationBusiness.getAccounts();
         assertEquals(0, accounts.size());
     }
@@ -87,7 +93,7 @@ public class SpringDatabaseIT extends BaseSpringIT{
     @Test
     @Order(4)
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void shouldRollbackWithRuntimeException() throws BusinessException, GRIDAClientException {
+    public void shouldRollbackWithRuntimeException() throws VipException, GRIDAClientException {
         // a runtime exception must rollback the current transaction
         testRollbackInTransaction(new RuntimeException(""), true);
     }
@@ -95,20 +101,22 @@ public class SpringDatabaseIT extends BaseSpringIT{
     @Test
     @Order(5)
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void shouldNotRollbackWithCheckedException() throws BusinessException, GRIDAClientException {
+    public void shouldNotRollbackWithCheckedException() throws VipException, GRIDAClientException {
         // a checked exception must NOT rollback the current transaction
-        testRollbackInTransaction(new BusinessException(""), false);
+        testRollbackInTransaction(new VipException(""), false);
     }
 
     private void testRollbackInTransaction(
-            Exception exception, boolean shouldRollback) throws BusinessException, GRIDAClientException {
+            Exception exception, boolean shouldRollback) throws VipException, GRIDAClientException {
+        setAdminContext();
+
         JdbcTemplate jdbcTemplate = new JdbcTemplate(lazyDataSource);
         Supplier<Integer> countUser =
                 () -> JdbcTestUtils.countRowsInTable(jdbcTemplate, "VIPUsers");
 
         String testEmail = "test@email.fr";
         assertEquals(1, countUser.get());
-        createUser(testEmail);
+        User user = createUser(testEmail);
         // verify initial user + new one are there
         assertEquals(2, countUser.get());
         // Now we will remove an user, and throw an exception when an email is sent at the end
@@ -121,7 +129,7 @@ public class SpringDatabaseIT extends BaseSpringIT{
 
         Exception exceptionCatched = null;
         try {
-            configurationBusiness.removeUser(testEmail, true);
+            userBusiness.remove(user.getId(), true);
         } catch (Exception ex) {
             exceptionCatched = ex;
         }
@@ -130,7 +138,7 @@ public class SpringDatabaseIT extends BaseSpringIT{
         assertEquals(shouldRollback ? 2 : 1, countUser.get());
         if (shouldRollback) {
             // clean if necessary
-            configurationBusiness.removeUser(testEmail, false);
+            userBusiness.remove(user.getId(), false);
         }
         assertEquals(1, countUser.get());
     }
@@ -141,20 +149,9 @@ public class SpringDatabaseIT extends BaseSpringIT{
     public void shouldHandleConnectionCreationIssue() throws SQLException {
         // as connection are lazy, connections are created when they are actually called
         // and not when the connection is obtained through spring and so errors cause SqlException
-        // and not spring DataAccessException, so vip is able to catch them and transform them in BusinessException
+        // and not spring DataAccessException, so vip is able to catch them and transform them in VipException
         Mockito.doThrow(SQLException.class).when(dataSource).getConnection();
-        assertThrows(BusinessException.class, () -> configurationBusiness.addTermsUse());
-        Mockito.reset(dataSource);
-    }
-
-    @Test
-    @Order(7)
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void connectionShouldBeLazyInTransaction() throws SQLException, MalformedURLException, URISyntaxException {
-        // getConnection throw an exception but should not be called as 'getLoginUrlCas' do not need db access
-        Mockito.doThrow(SQLException.class).when(dataSource).getConnection();
-        String res = configurationBusiness.getLoginUrlCas(new URI("file:/plop").toURL());
-        assertEquals(ServerMockConfig.TEST_CAS_URL + "/login?service=file:/plop", res);
+        assertThrows(VipException.class, () -> termsOfUseBusiness.add());
         Mockito.reset(dataSource);
     }
 }

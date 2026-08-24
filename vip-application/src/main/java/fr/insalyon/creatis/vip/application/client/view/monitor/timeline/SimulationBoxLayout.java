@@ -1,34 +1,3 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.application.client.view.monitor.timeline;
 
 import com.google.gwt.event.shared.HandlerRegistration;
@@ -45,15 +14,13 @@ import com.smartgwt.client.widgets.events.ClickEvent;
 import com.smartgwt.client.widgets.events.ClickHandler;
 import com.smartgwt.client.widgets.layout.HLayout;
 import com.smartgwt.client.widgets.layout.VLayout;
-import com.smartgwt.client.widgets.tab.Tab;
 import fr.insalyon.creatis.vip.application.client.ApplicationConstants;
-import fr.insalyon.creatis.vip.application.client.bean.Simulation;
 import fr.insalyon.creatis.vip.application.client.rpc.WorkflowService;
-import fr.insalyon.creatis.vip.application.client.view.launch.LaunchTab;
 import fr.insalyon.creatis.vip.application.client.view.common.AbstractSimulationTab;
 import fr.insalyon.creatis.vip.application.client.view.launch.RelaunchService;
-import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationStatus;
+import fr.insalyon.creatis.vip.application.client.view.monitor.WorkflowStatus;
 import fr.insalyon.creatis.vip.application.client.view.monitor.SimulationTab;
+import fr.insalyon.creatis.vip.application.models.Workflow;
 import fr.insalyon.creatis.vip.core.client.CoreModule;
 import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
 import fr.insalyon.creatis.vip.core.client.view.layout.Layout;
@@ -72,7 +39,7 @@ public class SimulationBoxLayout extends HLayout {
     protected String applicationName;
     protected String applicationVersion;
     protected String applicationClass;
-    protected SimulationStatus simulationStatus;
+    protected WorkflowStatus workflowStatus;
     protected Date launchedDate;
     private Img img;
     private Label nameLabel;
@@ -82,15 +49,15 @@ public class SimulationBoxLayout extends HLayout {
     protected HandlerRegistration handler;
 
     public SimulationBoxLayout(String id, String name, String applicationName,
-            String applicationVersion, String applicationClass, String user,
-            SimulationStatus status, Date launchedDate) {
+                               String applicationVersion, String applicationClass, String user,
+                               WorkflowStatus status, Date launchedDate) {
 
         this.simulationID = id;
         this.simulationName = name;
         this.applicationName = applicationName;
         this.applicationVersion = applicationVersion;
         this.applicationClass = applicationClass;
-        this.simulationStatus = status;
+        this.workflowStatus = status;
         this.launchedDate = launchedDate;
 
         this.setMembersMargin(10);
@@ -134,7 +101,7 @@ public class SimulationBoxLayout extends HLayout {
                 Layout.getInstance().addTab(
                     AbstractSimulationTab.tabIdFrom(simulationID),
                     () -> new SimulationTab(
-                        simulationID, simulationName, simulationStatus));
+                        simulationID, simulationName, workflowStatus));
             }
         });
         this.addMember(mainLayout);
@@ -155,7 +122,7 @@ public class SimulationBoxLayout extends HLayout {
 
     private void parseStatus() {
 
-        switch (simulationStatus) {
+        switch (workflowStatus) {
             case Running:
                 timer = new Timer() {
                     @Override
@@ -191,7 +158,7 @@ public class SimulationBoxLayout extends HLayout {
                 actionButton.setPrompt("Clean simulation");
                 img.setSrc(ApplicationConstants.ICON_MONITOR_SIMULATION_COMPLETED);
         }
-        img.setPrompt(simulationStatus.name());
+        img.setPrompt(workflowStatus.name());
     }
 
     private void cancelTimer() {
@@ -202,7 +169,7 @@ public class SimulationBoxLayout extends HLayout {
 
     private void loadData() {
 
-        AsyncCallback<Simulation> callback = new AsyncCallback<Simulation>() {
+        AsyncCallback<Workflow> callback = new AsyncCallback<Workflow>() {
             @Override
             public void onFailure(Throwable caught) {
                 Layout.getInstance().setWarningMessage("Unable to load simulation info:<br />" + caught.getMessage());
@@ -210,11 +177,11 @@ public class SimulationBoxLayout extends HLayout {
             }
 
             @Override
-            public void onSuccess(Simulation result) {
+            public void onSuccess(Workflow result) {
 
-                SimulationStatus status = result.getStatus();
-                if (status != simulationStatus) {
-                    simulationStatus = status;
+                WorkflowStatus status = result.getStatus();
+                if (status != workflowStatus) {
+                    workflowStatus = status;
                     parseStatus();
                 }
             }
@@ -225,7 +192,7 @@ public class SimulationBoxLayout extends HLayout {
     private void performAction() {
 
         String question;
-        switch (simulationStatus) {
+        switch (workflowStatus) {
             case Running:
                 question = "kill";
                 break;
@@ -239,7 +206,7 @@ public class SimulationBoxLayout extends HLayout {
             @Override
             public void execute(Boolean value) {
                 if (value) {
-                    switch (simulationStatus) {
+                    switch (workflowStatus) {
                         case Running:
                             killSimulation();
                             break;
@@ -357,10 +324,10 @@ public class SimulationBoxLayout extends HLayout {
         }
     }
 
-    public void updateStatus(SimulationStatus status) {
+    public void updateStatus(WorkflowStatus status) {
 
-        if (status != simulationStatus) {
-            simulationStatus = status;
+        if (status != workflowStatus) {
+            workflowStatus = status;
             parseStatus();
         }
     }

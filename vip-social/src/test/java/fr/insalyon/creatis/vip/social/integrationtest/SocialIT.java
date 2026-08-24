@@ -1,27 +1,30 @@
 package fr.insalyon.creatis.vip.social.integrationtest;
 
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.GroupType;
-import fr.insalyon.creatis.vip.core.client.bean.User;
-import fr.insalyon.creatis.vip.core.integrationtest.ServerMockConfig;
-import fr.insalyon.creatis.vip.core.integrationtest.database.BaseSpringIT;
-import fr.insalyon.creatis.vip.core.server.business.BusinessException;
-import fr.insalyon.creatis.vip.social.client.bean.GroupMessage;
-import fr.insalyon.creatis.vip.social.client.bean.Message;
-import fr.insalyon.creatis.vip.social.server.business.MessageBusiness;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+
+
 import org.apache.commons.lang.StringUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import fr.insalyon.creatis.vip.core.client.VipException;
+import fr.insalyon.creatis.vip.core.integrationtest.database.BaseSpringIT;
+import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.GroupType;
+import fr.insalyon.creatis.vip.core.models.User;
+import fr.insalyon.creatis.vip.social.models.GroupMessage;
+import fr.insalyon.creatis.vip.social.models.Message;
+import fr.insalyon.creatis.vip.social.server.business.MessageBusiness;
 
 
 public class SocialIT extends BaseSpringIT {
@@ -32,6 +35,10 @@ public class SocialIT extends BaseSpringIT {
     @BeforeEach
     public void setUp() throws Exception {
         super.setUp();
+        setAdminContext();
+
+        adminEmail = server.getAdminEmail();
+        admin = userBusiness.getUserWithGroups(adminEmail);
 
         // Create test group
         group1 = new Group(nameGroup1, true, GroupType.APPLICATION);
@@ -44,26 +51,34 @@ public class SocialIT extends BaseSpringIT {
         createUser(emailUser4, "suffix4");
 
         // Get test users
-        user1 = configurationBusiness.getUser(emailUser1);
-        user2 = configurationBusiness.getUser(emailUser2);
-        user3 = configurationBusiness.getUser(emailUser3);
-        user4 = configurationBusiness.getUser(emailUser4);
-        adminEmail = ServerMockConfig.TEST_ADMIN_EMAIL;
-        admin = configurationBusiness.getUser(adminEmail);
+        user1 = userBusiness.getUser(emailUser1);
+        user2 = userBusiness.getUser(emailUser2);
+        user3 = userBusiness.getUser(emailUser3);
+        user4 = userBusiness.getUser(emailUser4);
+
+        asAdminContext(() -> {
+            HashMap<String, CoreConstants.GROUP_ROLE> adminGroupRole = new HashMap<>();
+            adminGroupRole.put(nameGroup1, CoreConstants.GROUP_ROLE.Admin);
+            userBusiness.setUserGroups(emailUser1, adminGroupRole);
+            userBusiness.setUserGroups(emailUser2, adminGroupRole);
+        });
+
+        user1 = userBusiness.getUserWithGroups(emailUser1);
+        user2 = userBusiness.getUserWithGroups(emailUser2);
 
         // Send test messages
-        messageBusiness.sendMessage(admin, new String[]{emailUser1, emailUser3}, "test subject", "test message");
-        messageBusiness.sendGroupMessage(user1, nameGroup1,
-                configurationBusiness.getUsersFromGroup(nameGroup1),
-                "subject user 1", "message user 1");
+        setCurrentUser(admin);
+        sendMessageAs(admin, new String[]{user1.getId(), user3.getId()}, "test subject", "test message");
+
+        sendGroupMessageAs(user1, nameGroup1, "subject user 1", "message user 1");
 
     }
 
     @Test
-    public void testInitialisation() throws BusinessException {
-        Message firstIndividualMessage = messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).get(0);
+    public void testInitialisation() throws VipException {
+        Message firstIndividualMessage = getMessagesByUser(user1, getNextSecondDate()).get(0);
         GroupMessage firstGroupMessage = messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).get(0);
-        List<Message> sentMessagesByAdmin = messageBusiness.getSentMessagesByUser(adminEmail, getNextSecondDate());
+        List<Message> sentMessagesByAdmin = getSentMessagesByUser(admin, getNextSecondDate());
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 1);
@@ -72,10 +87,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of unread messages");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of unread messages");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of unread messages");
@@ -99,7 +114,7 @@ public class SocialIT extends BaseSpringIT {
         Assertions.assertTrue(receivers.containsAll(Arrays.asList(emailUser1, emailUser3)), "Incorrect message receivers");
 
         // verify first group message properties
-        Assertions.assertEquals(emailUser3, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).get(0).getReceivers()[0].getEmail(), "Incorrect message receivers number");
+        Assertions.assertEquals(emailUser3, getMessagesByUser(user3, getNextSecondDate()).get(0).getReceivers()[0].getEmail(), "Incorrect message receivers number");
         Assertions.assertEquals(nameGroup1, firstGroupMessage.getGroupName(), "Incorrect group name");
         Assertions.assertEquals("message user 1", firstGroupMessage.getMessage(), "Incorrect group message");
         Assertions.assertEquals(emailUser1, firstGroupMessage.getSender().getEmail(), "Incorrect group message sender");
@@ -112,7 +127,7 @@ public class SocialIT extends BaseSpringIT {
 
     @Test
     public void testSendMessage() throws Exception {
-        messageBusiness.sendMessage(user1, new String[]{emailUser1, emailUser3}, "subject user 2", "message user 2");
+        sendMessageAs(admin, new String[]{user1.getId(), user3.getId()}, "subject user 2", "message user 2");
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 2);
@@ -121,10 +136,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify number of messages by user
-        Assertions.assertEquals(2, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(2, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(2, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(2, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(2, messageBusiness.verifyMessages(emailUser1), "Incorrect number of unread messages");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of unread messages");
         Assertions.assertEquals(2, messageBusiness.verifyMessages(emailUser3), "Incorrect number of unread messages");
@@ -135,8 +150,8 @@ public class SocialIT extends BaseSpringIT {
     }
 
     @Test
-    public void testSendMessageAll() throws BusinessException {
-        messageBusiness.sendMessage(user2, new String[]{"All"}, "subject user 2", "message user 2");
+    public void testSendMessageAll() throws VipException {
+        sendMessageAs(admin, new String[]{"All"}, "subject user 2", "message user 2");
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 2);
@@ -145,10 +160,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify number of messages by user
-        Assertions.assertEquals(2, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(2, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(2, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(2, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(2, messageBusiness.verifyMessages(emailUser1), "Incorrect number of unread messages");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser2), "Incorrect number of unread messages");
         Assertions.assertEquals(2, messageBusiness.verifyMessages(emailUser3), "Incorrect number of unread messages");
@@ -163,15 +178,15 @@ public class SocialIT extends BaseSpringIT {
     @Test
     public void testCatchNonExistentUserSendMessage() {
         Exception exception = assertThrows(
-                BusinessException.class, () ->
-                        messageBusiness.sendMessage(
-                                nonExistentUser,
-                                new String[]{emailUser1, emailUser3},
+                VipException.class, () ->
+                sendMessageAs(
+                    nonExistentUser,
+                                new String[]{user1.getId(), user3.getId()},
                                 "subject user 2", "message user 2")
         );
 
         // INSERT + nonExistent foreign key sender => violation
-        assertTrue(StringUtils.contains(exception.getMessage(), "Referential integrity constraint violation"));
+        assertTrue(StringUtils.contains(exception.getMessage(), "You do not have the right to do that! (Error code 1001)"));
     }
 
 
@@ -180,8 +195,10 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testRemoveMessage() throws BusinessException {
-        messageBusiness.remove(messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).get(0).getId());
+    public void testRemoveMessage() throws VipException {
+        long messageId = getMessagesByUser(user1, getNextSecondDate()).get(0).getId();
+        setCurrentUser(admin);
+        messageBusiness.remove(messageId);
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 0);
@@ -190,10 +207,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -205,9 +222,10 @@ public class SocialIT extends BaseSpringIT {
 
 
     @Test
-    public void testCatchRemoveMessage() throws BusinessException {
+    public void testCatchRemoveMessage() throws VipException {
         // DELETE + nonExistent primary key messageId => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be deleted
+        setCurrentUser(admin);
         messageBusiness.remove(100);
     }
 
@@ -217,9 +235,9 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testRemoveByReceiver() throws BusinessException {
-        messageBusiness.removeByReceiver(messageBusiness.getMessagesByUser(emailUser1, new Date(System.currentTimeMillis())).get(0).getId(), emailUser3);
-
+    public void testRemoveByReceiver() throws VipException {
+        setCurrentUser(user3);
+        removeByReceiverAs(user3, getMessagesByUser(user1, getNextSecondDate()).get(0).getId());
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 1);
         assertRowsNbInTable("VIPSocialMessageSenderReceiver", 1);
@@ -227,10 +245,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify number of messages by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Invalid number of indivud messages");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Invalid number of indivud messages");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Nombre incorrect de messages non lus");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Nombre incorrect de messages non lus");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser3), "Nombre incorrect de messages non lus");
@@ -241,18 +259,18 @@ public class SocialIT extends BaseSpringIT {
     }
 
     @Test
-    public void testCatchNonExistentUserRemoveByReceiver() throws BusinessException {
+    public void testCatchNonExistentUserRemoveByReceiver() throws VipException {
         // DELETE + nonExistent foreign key / part of primary key receiver => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be deleted
-        messageBusiness.removeByReceiver(messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).get(0).getId(), "nonExistent user");
+        removeByReceiverAs(nonExistentUser, getMessagesByUser(user1, getNextSecondDate()).get(0).getId());
     }
 
 
     @Test
-    public void testCatchNonExistentMessageRemoveByReceiver() throws BusinessException {
+    public void testCatchNonExistentMessageRemoveByReceiver() throws VipException {
         // DELETE + nonExistent foreign key / part of primary key messageId => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be deleted
-        messageBusiness.removeByReceiver(2, emailUser3);
+        removeByReceiverAs(user3, 2);
     }
 
     /* ********************************************************************************************************************************************** */
@@ -260,11 +278,11 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testCopyMessageToVipSupport() throws BusinessException {
-        messageBusiness.copyMessageToVipSupport
+    public void testCopyMessageToVipSupport() throws VipException {
+        copyMessageToVipSupportAs
                 (
                         user1,
-                        new String[]{emailUser1, emailUser3},
+                        new String[]{user1.getId(), user3.getId()},
                         "subject test copy message to Vip support",
                         "message test copy message to Vip support"
                 );
@@ -278,10 +296,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -294,8 +312,8 @@ public class SocialIT extends BaseSpringIT {
 
     //FIXME : does not check if the sender exists
     @Test
-    public void testCatchCopyMessageToVipSupport() throws BusinessException {
-        messageBusiness.copyMessageToVipSupport(nonExistentUser, new String[]{emailUser1, emailUser3}, "subject test copy message to Vip support", "message test copy message to Vip support");
+    public void testCatchCopyMessageToVipSupport() throws VipException {
+        copyMessageToVipSupportAs(nonExistentUser, new String[]{user1.getId(), user3.getId()}, "subject test copy message to Vip support", "message test copy message to Vip support");
 
         // Nothing changes
 
@@ -306,10 +324,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -324,9 +342,9 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testSendMessageToVipSupport() throws BusinessException {
+    public void testSendMessageToVipSupport() throws VipException {
 
-        messageBusiness.sendMessageToVipSupport
+        sendMessageToVipSupportAs
                 (
                         user2,
                         "subject",
@@ -345,10 +363,10 @@ public class SocialIT extends BaseSpringIT {
 
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -361,8 +379,8 @@ public class SocialIT extends BaseSpringIT {
 
     //FIXME : does not check if the sender exists
     @Test
-    public void testCatchNonExistentEmailSendMessageToVipSupport() throws BusinessException {
-        messageBusiness.sendMessageToVipSupport
+    public void testCatchNonExistentEmailSendMessageToVipSupport() throws VipException {
+        sendMessageToVipSupportAs
                 (
                         nonExistentUser,
                         "subject",
@@ -381,10 +399,10 @@ public class SocialIT extends BaseSpringIT {
 
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -399,13 +417,8 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testMarkAsRead() throws BusinessException {
-        messageBusiness.markAsRead
-                (
-                        messageBusiness.getMessagesByUser(emailUser1,
-                                getNextSecondDate()).get(0).getId(),
-                        emailUser1
-                );
+    public void testMarkAsRead() throws VipException {
+        markAsReadAs(user1, getMessagesByUser(user1, getNextSecondDate()).get(0).getId());
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 1);
@@ -414,10 +427,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -429,14 +442,10 @@ public class SocialIT extends BaseSpringIT {
 
 
     @Test
-    public void testCatchNonExistentUserMarkAsRead() throws BusinessException {
+    public void testCatchNonExistentUserMarkAsRead() throws VipException {
         // UPDATE + nonExistent primary key receiver => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be updated
-        messageBusiness.markAsRead
-                (
-                        messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).get(0).getId(),
-                        "nonExistent user"
-                );
+        markAsReadAs(nonExistentUser, getMessagesByUser(user1, getNextSecondDate()).get(0).getId());
 
         // Nothing changes
 
@@ -448,10 +457,10 @@ public class SocialIT extends BaseSpringIT {
 
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -463,10 +472,10 @@ public class SocialIT extends BaseSpringIT {
 
 
     @Test
-    public void testCatchNonExistentMessageMarkAsRead() throws BusinessException {
+    public void testCatchNonExistentMessageMarkAsRead() throws VipException {
         // UPDATE + nonExistent part of primary key messageId => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be updated
-        messageBusiness.markAsRead(100, emailUser1);
+        markAsReadAs(user1, 100);
 
         // Nothing changes
 
@@ -478,10 +487,10 @@ public class SocialIT extends BaseSpringIT {
 
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -496,17 +505,17 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testGetMessageByUser() throws BusinessException {
-        List<Message> messages = messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate());
+    public void testGetMessageByUser() throws VipException {
+        List<Message> messages = getMessagesByUser(user1, getNextSecondDate());
 
         Assertions.assertEquals(1, messages.size(), "Incorrect number of messages received");
     }
 
     @Test
-    public void testCatchGetMessageByUser() throws BusinessException {
+    public void testCatchGetMessageByUser() throws VipException {
         // SELECT + nonExistent foreign key / part of primary key email => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be selected
-        List<Message> messages = messageBusiness.getMessagesByUser("nonExistent user", getNextSecondDate());
+        List<Message> messages = getMessagesByUser(nonExistentUser, getNextSecondDate());
 
         Assertions.assertEquals(0, messages.size(), "Incorrect number of messages received");
     }
@@ -516,14 +525,8 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testSendGroupMessage() throws BusinessException {
-        messageBusiness.sendGroupMessage
-                (
-                        user2,
-                        nameGroup1, configurationBusiness.getUsersFromGroup(nameGroup1),
-                        "subject user 2",
-                        "message user 2"
-                );
+    public void testSendGroupMessage() throws VipException {
+        sendGroupMessageAs(user2, nameGroup1, "subject user 2", "message user 2");
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 1);
@@ -532,69 +535,52 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(adminEmail), "Incorrect number of messages not read");
 
-        // verify number group messages
         Assertions.assertEquals(2, messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).size(), "Incorrect number of group messages received");
 
     }
 
     @Test
     public void testCatchNonExistentSenderGroupMessage() {
-        Exception exception = assertThrows
-                (BusinessException.class, () ->
-                        messageBusiness.sendGroupMessage
-                                (
-                                        nonExistentUser,
-                                        nameGroup1,
-                                        configurationBusiness.getUsersFromGroup(nameGroup1),
-                                        "subject user 2",
-                                        "message user 2"
-                                )
-                );
+        Exception exception = assertThrows(VipException.class,
+            () -> sendGroupMessageAs(nonExistentUser, nameGroup1, "subject user 2", "message user 2"));
 
         // INSERT + nonExistent foreign key sender => violation
-        assertTrue(StringUtils.contains(exception.getMessage(), "Referential integrity constraint violation"));
+        assertTrue(StringUtils.contains(exception.getMessage(), "You do not have the right to do that! (Error code 1001)"));
     }
 
 
     @Test
-    public void testCatchNonExistentGroupMessage() throws BusinessException {
-        Exception exception = assertThrows
-                (BusinessException.class, () ->
-                        messageBusiness.sendGroupMessage
-                                (
-                                        user3,
-                                        "nonExistent group",
-                                        configurationBusiness.getUsersFromGroup(nameGroup1),
-                                        "subject user 2",
-                                        "message user 2"
-                                )
-                );
+        public void testCatchNonExistentGroupMessage() {
+        Exception exception = assertThrows(VipException.class,
+            () -> sendGroupMessageAs(user3, "nonExistent group", "subject user 2", "message user 2"));
 
         // INSERT + nonExistent foreign key groupName => violation
-        assertTrue(StringUtils.contains(exception.getMessage(), "Referential integrity constraint violation"));
+        assertTrue(StringUtils.contains(exception.getMessage(), "You do not have the right to do that! (Error code 1001)"));
     }
 
     @Test
-    public void testCatchNonExistentUsersSendGroupMessage() throws BusinessException {
-        // SELECT + nonExistent foreign key / part of primary key groupName => no exception
-        // We decided not to add an exception because if this occurs, it will not create problem, just no row will be selected
-        messageBusiness.sendGroupMessage
-                (
-                        user3,
-                        nameGroup1,
-                        configurationBusiness.getUsersFromGroup("nonExistent group"),
-                        "subject user 2",
-                        "message user 2"
-                );
+    public void testCatchNonExistentUsersSendGroupMessage() throws VipException {
+        try {
+            setAdminContext();
+            Group emptyGroup = new Group("empty-group", true, GroupType.APPLICATION);
+            groupBusiness.add(emptyGroup);
+            HashMap<String, CoreConstants.GROUP_ROLE> adminGroupRole = new HashMap<>();
+            adminGroupRole.put("empty-group", CoreConstants.GROUP_ROLE.Admin);
+            userBusiness.setUserGroups(emailUser1, adminGroupRole);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        sendGroupMessageAs(admin, "empty-group", "subject user 2", "message user 2");
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 1);
@@ -603,17 +589,18 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(adminEmail), "Incorrect number of messages not read");
 
         // verify number group messages
-        Assertions.assertEquals(2, messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).size(), "Incorrect number of group messages received"); // Inserted even if there is no receiver
+        Assertions.assertEquals(1, messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).size(), "Incorrect number of group messages received");
+        Assertions.assertEquals(1, messageBusiness.getGroupMessages("empty-group", getNextSecondDate()).size(), "Incorrect number of group messages received");
     }
 
     /* ********************************************************************************************************************************************** */
@@ -621,8 +608,8 @@ public class SocialIT extends BaseSpringIT {
     /* ********************************************************************************************************************************************** */
 
     @Test
-    public void testRemoveGroupMessage() throws BusinessException {
-        messageBusiness.removeGroupMessage(messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).get(0).getId());
+    public void testRemoveGroupMessage() throws VipException {
+        removeGroupMessageAs(user1, messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).get(0).getId());
 
         // verify entry numbers in each table
         assertRowsNbInTable("VIPSocialMessage", 1);
@@ -631,10 +618,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -645,9 +632,10 @@ public class SocialIT extends BaseSpringIT {
     }
 
     @Test
-    public void testCatchRemoveGroupMessage() throws BusinessException {
+    public void testCatchRemoveGroupMessage() throws VipException {
         // DELETE + nonExistent primary key groupId => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be deleted
+        setCurrentUser(admin);
         messageBusiness.removeGroupMessage(100); // inexisting group message id
 
         // Nothing changes
@@ -659,10 +647,10 @@ public class SocialIT extends BaseSpringIT {
         assertRowsNbInTable("VIPUsers", 5);
 
         // verify message nb by user
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(1, messageBusiness.getMessagesByUser(emailUser3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
-        Assertions.assertEquals(0, messageBusiness.getMessagesByUser(emailUser4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user2, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(1, getMessagesByUser(user3, getNextSecondDate()).size(), "Incorrect number of individual messages received");
+        Assertions.assertEquals(0, getMessagesByUser(user4, getNextSecondDate()).size(), "Incorrect number of individual messages received");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser1), "Incorrect number of messages not read");
         Assertions.assertEquals(0, messageBusiness.verifyMessages(emailUser2), "Incorrect number of messages not read");
         Assertions.assertEquals(1, messageBusiness.verifyMessages(emailUser3), "Incorrect number of messages not read");
@@ -677,13 +665,13 @@ public class SocialIT extends BaseSpringIT {
     /* ******************************************************************************************************************************************************* */
 
     @Test
-    public void testGetGroupMessages() throws BusinessException {
+    public void testGetGroupMessages() throws VipException {
         Assertions.assertEquals(1, messageBusiness.getGroupMessages(nameGroup1, getNextSecondDate()).size(), "Incorrect number of group messages received");
     }
 
 
     @Test
-    public void testCatchGetNonExistentGroupMessages() throws BusinessException {
+    public void testCatchGetNonExistentGroupMessages() throws VipException {
         // SELECT + nonExistent foreign key groupName => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be selected
         Assertions.assertEquals(0, messageBusiness.getGroupMessages("nonExistent group", getNextSecondDate()).size(), "Incorrect number of group messages received");
@@ -696,22 +684,22 @@ public class SocialIT extends BaseSpringIT {
 
 
     @Test
-    public void testGetSentMessageByUser() throws BusinessException {
-        Assertions.assertEquals(0, messageBusiness.getSentMessagesByUser(emailUser1, getNextSecondDate()).size(), "Incorrect number of individual messages sent");
+    public void testGetSentMessageByUser() throws VipException {
+        Assertions.assertEquals(0, getSentMessagesByUser(user1, getNextSecondDate()).size(), "Incorrect number of individual messages sent");
     }
 
 
     @Test
-    public void testAdminGetSentMessageByUser() throws BusinessException {
-        Assertions.assertEquals(1, messageBusiness.getSentMessagesByUser(adminEmail, getNextSecondDate()).size(), "Incorrect number of individual messages sent");
+    public void testAdminGetSentMessageByUser() throws VipException {
+        Assertions.assertEquals(1, getSentMessagesByUser(admin, getNextSecondDate()).size(), "Incorrect number of individual messages sent");
     }
 
 
     @Test
-    public void testCatchGetSentMessageByUser() throws BusinessException {
+    public void testCatchGetSentMessageByUser() throws VipException {
         // SELECT + nonExistent foreign key sender email  => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be selected
-        Assertions.assertEquals(0, messageBusiness.getSentMessagesByUser("nonExistent user", getNextSecondDate()).size(), "Incorrect number of group messages received");
+        Assertions.assertEquals(0, getSentMessagesByUser(nonExistentUser, getNextSecondDate()).size(), "Incorrect number of group messages received");
 
     }
 
@@ -721,10 +709,56 @@ public class SocialIT extends BaseSpringIT {
 
 
     @Test
-    public void testCatchIncorrectEmailVerifyMessages() throws BusinessException {
+    public void testCatchIncorrectEmailVerifyMessages() throws VipException {
         // SELECT + nonExistent foreign key receiver  => no exception
         // We decided not to add an exception because if this occurs, it will not create problem, just no row will be selected
         messageBusiness.verifyMessages("nonExistent user");
+    }
+
+    private List<Message> getMessagesByUser(User user, Date startDate) throws VipException {
+        setCurrentUser(user);
+        return messageBusiness.getMessagesByUser(startDate);
+    }
+
+    private List<Message> getSentMessagesByUser(User user, Date startDate) throws VipException {
+        setCurrentUser(user);
+        return messageBusiness.getSentMessagesByUser(startDate);
+    }
+
+    private void sendMessageAs(User user, String[] recipients, String subject, String message) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.sendMessage(recipients, subject, message);
+    }
+
+    private void sendGroupMessageAs(User user, String groupName, String subject, String message) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.sendGroupMessage(groupName, subject, message);
+    }
+
+    private void copyMessageToVipSupportAs(User user, String[] recipients, String subject, String message) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.copyMessageToVipSupport(recipients, subject, message);
+    }
+
+    private void sendMessageToVipSupportAs(User user, String subject, String message,
+            List<String> workflowIDs, List<String> simulationNames) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.sendMessageToVipSupport(subject, message, workflowIDs, simulationNames);
+    }
+
+    private void removeByReceiverAs(User user, long id) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.removeByReceiver(id);
+    }
+
+    private void markAsReadAs(User user, long id) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.markAsRead(id);
+    }
+
+    private void removeGroupMessageAs(User user, long id) throws VipException {
+        setCurrentUser(user);
+        messageBusiness.removeGroupMessage(id);
     }
 
 

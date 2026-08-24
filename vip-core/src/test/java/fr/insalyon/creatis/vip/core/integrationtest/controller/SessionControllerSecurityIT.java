@@ -24,7 +24,7 @@ public class SessionControllerSecurityIT extends BaseInternalApiSpringIT {
     protected void setUpUser() throws Exception {
         createUser(emailUser1);
         userDAO.updateSession(emailUser1, "super_session");
-        user1 = userDAO.getUser(emailUser1);
+        user1 = userDAO.get(emailUser1);
     }
 
     // GET with no cookie -> 401

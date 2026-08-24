@@ -8,13 +8,13 @@ import com.google.gwt.core.client.GWT;
 import com.google.gwt.user.client.rpc.RemoteService;
 import com.google.gwt.user.client.rpc.ServiceDefTarget;
 
-import fr.insalyon.creatis.vip.core.client.bean.Group;
-import fr.insalyon.creatis.vip.core.client.bean.UsageStats;
-import fr.insalyon.creatis.vip.core.client.bean.User;
 import fr.insalyon.creatis.vip.core.client.view.CoreConstants;
 import fr.insalyon.creatis.vip.core.client.view.CoreException;
 import fr.insalyon.creatis.vip.core.client.view.user.UserLevel;
 import fr.insalyon.creatis.vip.core.client.view.util.CountryCode;
+import fr.insalyon.creatis.vip.core.models.Group;
+import fr.insalyon.creatis.vip.core.models.UsageStats;
+import fr.insalyon.creatis.vip.core.models.User;
 
 public interface ConfigurationService extends RemoteService {
 
@@ -94,8 +94,6 @@ public interface ConfigurationService extends RemoteService {
     void resetPassword(String email, String code, String password) throws CoreException;
 
     void updateLastUpdatePublication() throws CoreException;
-
-    String getCASLoginPageUrl() throws CoreException;
 
     UsageStats getUsageStats() throws CoreException;
 

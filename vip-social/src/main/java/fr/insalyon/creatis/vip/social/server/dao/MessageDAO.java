@@ -1,14 +1,11 @@
 package fr.insalyon.creatis.vip.social.server.dao;
 
-import fr.insalyon.creatis.vip.core.server.dao.DAOException;
-import fr.insalyon.creatis.vip.social.client.bean.Message;
 import java.util.Date;
 import java.util.List;
 
-/**
- *
- * @author Rafael Silva
- */
+import fr.insalyon.creatis.vip.core.server.dao.DAOException;
+import fr.insalyon.creatis.vip.social.models.Message;
+
 public interface MessageDAO {
     
     public long add(String sender, String title, String message) throws DAOException;
@@ -24,6 +21,8 @@ public interface MessageDAO {
     public void remove(long id) throws DAOException;
     
     public void removeByReceiver(long id, String receiver) throws DAOException;
+
+    public Message get(long id) throws DAOException;
     
     public int verifyMessages(String email) throws DAOException;
 }

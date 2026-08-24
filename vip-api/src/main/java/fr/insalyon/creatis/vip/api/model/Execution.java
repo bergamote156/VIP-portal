@@ -1,43 +1,15 @@
-/*
- * Copyright and authors: see LICENSE.txt in base repository.
- *
- * This software is a web portal for pipeline execution on distributed systems.
- *
- * This software is governed by the CeCILL-B license under French law and
- * abiding by the rules of distribution of free software.  You can  use,
- * modify and/ or redistribute the software under the terms of the CeCILL-B
- * license as circulated by CEA, CNRS and INRIA at the following URL
- * "http://www.cecill.info".
- *
- * As a counterpart to the access to the source code and  rights to copy,
- * modify and redistribute granted by the license, users are provided only
- * with a limited warranty  and the software's author,  the holder of the
- * economic rights,  and the successive licensors  have only  limited
- * liability.
- *
- * In this respect, the user's attention is drawn to the risks associated
- * with loading,  using,  modifying and/or developing or reproducing the
- * software by the user in light of its specific status of free software,
- * that may mean  that it is complicated to manipulate,  and  that  also
- * therefore means  that it is reserved for developers  and  experienced
- * professionals having in-depth computer knowledge. Users are therefore
- * encouraged to load and test the software's suitability as regards their
- * requirements in conditions enabling the security of their systems and/or
- * data to be ensured and,  more generally, to use and operate it in the
- * same conditions as regards security.
- *
- * The fact that you are presently reading this means that you have had
- * knowledge of the CeCILL-B license and that you accept its terms.
- */
 package fr.insalyon.creatis.vip.api.model;
 
 import java.util.*;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 
-/**
- *
- * @author Tristan Glatard
- */
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import fr.insalyon.creatis.vip.api.model.serializing.InputValuesDeserializer;
+
 public class Execution {
 
     private String identifier;
@@ -47,8 +19,23 @@ public class Execution {
     private String pipelineIdentifier;
     private int timeout;
     private ExecutionStatus status;
+    /* the inputValues property has a peculiar behavior
+    As input, it can be a list of maps or a map. InputValuesDeserializer handles that and produces a list of
+    maps in all cases. This list can be accessed through the getInputValuesForInit method.
+    As output, it is always (at the moment) a map. This map can be accessed/modified through the inputValuesForDisplay
+    property.
+    The getInputValuesForJackson ensure the serialization as a map. It is private to keep this behavior
+    internal. This needs access READ_WRITE to work.
+    So Jackson uses the InputValuesDeserializer for deserialization and the getInputValuesForJackson for serialization.
+    All other methods for inputValues are ignored by jackson, and are meant to make available the appropriate input
+    values for init or display.
+    */
     @NotNull
-    private Map<String, java.lang.Object> inputValues;
+    @JsonProperty(value = "inputValues", access = JsonProperty.Access.READ_WRITE)
+    @JsonDeserialize(using = InputValuesDeserializer.class)
+    private List<Map<String, Object>> inputValuesForJackson;
+    @JsonIgnore
+    private Map<String, Object> inputValuesForDisplay;
     private Map<String, List<java.lang.Object>> returnedFiles;
 
     // optional arguments
@@ -56,11 +43,11 @@ public class Execution {
     private Integer errorCode;
     private Long startDate;
     private Long endDate;
-    private String resultsLocation;
+    private Object resultsLocation;
     private Map<Integer, Map<String, Object>> jobs; // jobId -> status
 
     public Execution() {
-        inputValues = new HashMap<>();
+        inputValuesForDisplay = new HashMap<>();
         returnedFiles = new HashMap<>();
         jobs = new HashMap<>();
     }
@@ -74,7 +61,7 @@ public class Execution {
                      Integer errorCode,
                      Long startDate,
                      Long endDate,
-                     String resultsLocation) {
+                     Object resultsLocation) {
         this();
         this.identifier = identifier;
         this.name = name == null ? identifier : name; // null names sometimes happen due to a race condition in VIP.
@@ -129,12 +116,28 @@ public class Execution {
         this.status = status;
     }
 
-    public Map<String, java.lang.Object> getInputValues() {
-        return inputValues;
+    @JsonIgnore
+    // allow to fetch the inputValues list deserialized by jackson
+    // only used on execution init
+    public List<Map<String, Object>> getInputValuesForInit() {
+        return inputValuesForJackson;
     }
 
-    public void setInputValues(Map<String, java.lang.Object> inputValues) {
-        this.inputValues = inputValues;
+    /*
+      make it private to avoid accidental use
+      only used by jackson for serializing
+      and we want to serialize the map version
+     */
+    private Map<String, Object> getInputValuesForJackson() {
+        return inputValuesForDisplay;
+    }
+
+    public void setInputValuesForDisplay(Map<String, Object> inputValues) {
+        this.inputValuesForDisplay = inputValues;
+    }
+
+    public Map<String, Object> getInputValuesForDisplay() {
+        return inputValuesForDisplay;
     }
 
     public Map<String, List<java.lang.Object>> getReturnedFiles() {
@@ -181,11 +184,11 @@ public class Execution {
         this.endDate = endDate;
     }
 
-    public String getResultsLocation() {
+    public Object getResultsLocation() {
         return resultsLocation;
     }
 
-    public void setResultsLocation(String resultsLocation) {
+    public void setResultsLocation(Object resultsLocation) {
         this.resultsLocation = resultsLocation;
     }
 

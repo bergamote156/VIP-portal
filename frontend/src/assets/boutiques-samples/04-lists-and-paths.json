@@ -1,0 +1,53 @@
+{
+  "name": "Lists and Paths Demo",
+  "tool-version": "1.3.0",
+  "description": "Descriptor to test list behavior, separators, list cardinality and absolute paths.",
+  "schema-version": "0.5",
+  "command-line": "run [SUBJECTS] [WEIGHTS] [REFS] [TAGS]",
+  "inputs": [
+    {
+      "id": "subjects",
+      "name": "Subjects",
+      "type": "String",
+      "description": "Comma-separated list of subject identifiers.",
+      "value-key": "[SUBJECTS]",
+      "list": true,
+      "list-separator": ",",
+      "min-list-entries": 2,
+      "max-list-entries": 4
+    },
+    {
+      "id": "weights",
+      "name": "Weights",
+      "type": "Number",
+      "description": "Semicolon-separated list of normalized weights.",
+      "value-key": "[WEIGHTS]",
+      "list": true,
+      "list-separator": ";",
+      "min-list-entries": 2,
+      "max-list-entries": 5,
+      "minimum": 0,
+      "maximum": 1
+    },
+    {
+      "id": "reference_files",
+      "name": "Reference files",
+      "type": "File",
+      "description": "List of absolute file paths used as references.",
+      "value-key": "[REFS]",
+      "list": true,
+      "min-list-entries": 1,
+      "uses-absolute-path": true
+    },
+    {
+      "id": "tags",
+      "name": "Tags",
+      "type": "String",
+      "description": "List of tags from allowed values.",
+      "value-key": "[TAGS]",
+      "list": true,
+      "value-choices": ["clinical", "research", "pilot", "production"],
+      "optional": true
+    }
+  ]
+}

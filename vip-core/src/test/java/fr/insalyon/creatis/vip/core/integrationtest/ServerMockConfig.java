@@ -42,6 +42,7 @@ public class ServerMockConfig {
     // paths stuff
     public static final String TEST_USERS_ROOT = "/test/prefix/vip/data/test_users";
     public static final String TEST_GROUP_ROOT = "/test/prefix/vip/data/test_groups";
+    public static final String TEST_GRIDA_STORAGE_PATH = "/path/to/grida/storage";
     public static final String TEST_CORS_URL = "https://test-cors-domain";
 
     public static void reset(Server server) {
@@ -57,6 +58,7 @@ public class ServerMockConfig {
         when(server.getMaxPlatformRunningSimulations()).thenReturn(Integer.valueOf(MAX_NUMBER_EXECUTIONS));
         when(server.getDataManagerUsersHome()).thenReturn(TEST_USERS_ROOT);
         when(server.getDataManagerGroupsHome()).thenReturn(TEST_GROUP_ROOT);
+        when(server.getDataManagerPath()).thenReturn(TEST_GRIDA_STORAGE_PATH);
         when(server.getVoRoot()).thenReturn("/vo_test/root");
         // only CarminProperties that are used in vip-core should be mocked here, others should be in vip-api
         when(server.getApikeyHeaderName()).thenReturn("testapikey");
@@ -64,6 +66,7 @@ public class ServerMockConfig {
         // CORS_AUTHORIZED_DOMAINS is only used in vip-api, but in the SpringRestApiConfig (servlet context),
         // which uses a Server bean internally. We mock it here, currently lacking a cleaner solution for a higher level mock.
         when(server.getCarminCorsAuthorizedDomains()).thenReturn(new String[]{TEST_CORS_URL});
+        when(server.getApiParallelDownloadNb()).thenReturn(2);
     }
 
     @Component

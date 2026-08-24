@@ -1,0 +1,86 @@
+{
+  "name": "Dependencies and Disables Demo",
+  "tool-version": "1.1.0",
+  "description": "Descriptor to test requires-inputs, disables-inputs, value-requires and value-disables.",
+  "schema-version": "0.5",
+  "command-line": "run [INPUT] [PREPROCESS] [METHOD] [STRATEGY] [GPU_COUNT] [MASK] [AUTO_MASK]",
+  "inputs": [
+    {
+      "id": "input_file",
+      "name": "Input file",
+      "type": "File",
+      "description": "Main input file.",
+      "value-key": "[INPUT]",
+      "uses-absolute-path": true
+    },
+    {
+      "id": "preprocess",
+      "name": "Enable preprocessing",
+      "type": "Flag",
+      "description": "Enable preprocessing step.",
+      "value-key": "[PREPROCESS]",
+      "command-line-flag": "--preprocess",
+      "optional": true,
+      "default-value": false
+    },
+    {
+      "id": "method",
+      "name": "Preprocessing method",
+      "type": "String",
+      "description": "Only available if preprocessing is enabled.",
+      "value-key": "[METHOD]",
+      "optional": true,
+      "requires-inputs": ["preprocess"],
+      "value-choices": ["A", "B"],
+      "default-value": "A"
+    },
+    {
+      "id": "strategy",
+      "name": "Execution strategy",
+      "type": "String",
+      "description": "GPU strategy requires gpu_count.",
+      "value-key": "[STRATEGY]",
+      "value-choices": ["cpu", "gpu"],
+      "value-requires": {
+        "cpu": [],
+        "gpu": ["gpu_count"]
+      },
+      "value-disables": {
+        "cpu": ["gpu_count"],
+        "gpu": []
+      },
+      "default-value": "cpu"
+    },
+    {
+      "id": "gpu_count",
+      "name": "GPU count",
+      "type": "Number",
+      "description": "Number of GPUs, when strategy is gpu.",
+      "value-key": "[GPU_COUNT]",
+      "optional": true,
+      "integer": true,
+      "minimum": 1,
+      "maximum": 8
+    },
+    {
+      "id": "mask_file",
+      "name": "Mask file",
+      "type": "File",
+      "description": "If provided, automatic mask must be disabled.",
+      "value-key": "[MASK]",
+      "optional": true,
+      "disables-inputs": ["auto_mask"],
+      "uses-absolute-path": true
+    },
+    {
+      "id": "auto_mask",
+      "name": "Automatic mask",
+      "type": "Flag",
+      "description": "Generate mask automatically.",
+      "value-key": "[AUTO_MASK]",
+      "command-line-flag": "--auto-mask",
+      "optional": true,
+      "default-value": true
+    }
+  ]
+}
