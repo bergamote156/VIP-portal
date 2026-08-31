@@ -76,7 +76,9 @@ public class ListWorkflowsBusiness extends CommonBusiness {
             }
             workflow = parseDbWorkflow(dbWorkflow);
 
-            if ( ! getUser().isSystemAdministrator() && !Objects.equals(workflow.getUserId(), getUser().getId())) {
+            if ( ! getUser().isSystemAdministrator()
+                    && !Objects.equals(workflow.getUserId(), getUser().getId())
+                    && !userHasRole("SERVICE")) {
                 logger.error("unauthorized access to workflow {} by {}", workflowId, getUser().getEmail());
                 throw new VipException(DefaultError.ACCESS_DENIED);
             }

@@ -96,7 +96,10 @@ public class RestApiSecurityConfig {
                         .requestMatchers(antMatcher("/rest/**")).authenticated()
                         .anyRequest().permitAll()
                 )
-                .exceptionHandling((exceptionHandling) -> exceptionHandling.authenticationEntryPoint(vipAuthenticationEntryPoint))
+                .exceptionHandling((exceptionHandling) ->
+                        exceptionHandling
+                                .authenticationEntryPoint(vipAuthenticationEntryPoint)
+                                .accessDeniedHandler(vipAuthenticationEntryPoint))
                 // session must be activated otherwise OIDC auth info will be lost when accessing /rest/loginOIDC
                 // .sessionManagement((sessionManagement) -> sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .anonymous((anonymous) -> anonymous.disable())
