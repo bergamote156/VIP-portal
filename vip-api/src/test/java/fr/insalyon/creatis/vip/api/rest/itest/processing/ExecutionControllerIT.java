@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import fr.insalyon.creatis.vip.core.server.security.oidc.OidcToken;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -68,6 +69,10 @@ import fr.insalyon.creatis.vip.core.client.DefaultError;
 import fr.insalyon.creatis.vip.core.integrationtest.ServerMockConfig;
 import fr.insalyon.creatis.vip.core.models.Group;
 import fr.insalyon.creatis.vip.core.models.GroupType;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * Test method on platform path
@@ -161,6 +166,33 @@ public class ExecutionControllerIT extends BaseRestApiSpringIT {
                 // Check that the returned execution is the good one
                 .andExpect(jsonPath("$.status").value("Finished"))
                 .andExpect(jsonPath("$.identifier").value("execId2"));
+    }
+
+    @Test
+    public void serviceAccountShouldGetAnyExecution() throws Exception {
+        when(workflowDAO.get(eq(WORKFLOW_2.getID()))).thenReturn(w2, w2, null);
+
+        createUser(baseUser2);
+        RequestPostProcessor springSecurityUser =
+                SecurityMockMvcRequestPostProcessors.authentication(new OidcToken(baseUser2, null, AuthorityUtils.createAuthorityList("ROLE_SERVICE")));
+
+        // perform a getWorkflows()
+        mockMvc.perform(
+                        get("/rest/executions/" + WORKFLOW_2.getID() + "/summary").with(springSecurityUser))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE))
+                // Check that the returned execution is the good one
+                .andExpect(jsonPath("$.status").value("Finished"))
+                .andExpect(jsonPath("$.identifier").value("execId2"));
+
+        // forbidden without the service account
+
+        mockMvc.perform(
+                        get("/rest/executions/" + WORKFLOW_2.getID() + "/summary").with(baseUser2()))
+                .andDo(print())
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_VALUE));
     }
 
     @Test
