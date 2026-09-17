@@ -56,7 +56,7 @@ export const appVersionsApi = {
   getAll: (_offset = 0, _quantity = 50) => {
     return backendClient
       .get<PrecisePage<BackendAppVersionRaw>>(
-        `/internal/applications/versions`
+        `/internal/applications/versions?offset=${_offset}&quantity=${_quantity}`
       )
       .then((r) => ({
         ...r.data,
@@ -67,7 +67,7 @@ export const appVersionsApi = {
   getAllForApplication: (applicationId: string, _offset = 0, _quantity = 50) => {
     return backendClient
       .get<PrecisePage<BackendAppVersionRaw>>(
-        `/internal/applications/${encodeURIComponent(applicationId)}/versions`
+        `/internal/applications/${encodeURIComponent(applicationId)}/versions?offset=${_offset}&quantity=${_quantity}`
       )
       .then((r) => ({
         ...r.data,

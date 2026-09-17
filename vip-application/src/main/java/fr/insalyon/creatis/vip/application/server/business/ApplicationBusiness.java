@@ -192,18 +192,15 @@ public class ApplicationBusiness extends CommonBusiness {
             .stream()
             .filter((g) -> g.getType().equals(GroupType.APPLICATION))
             .collect(Collectors.toList());
-        List<Application> result = new ArrayList<>();
-        Set<String> appNames = new HashSet<>();
+        Set<Application> result = new HashSet<>();
 
         // TODO : improve that, make that more efficient
         for (Group group : userGroups) {
             for (Application app : getApplications(group)) {
-                if (appNames.add(app.getName())) {
-                    result.add(app);
-                }
+                result.add(app);
             }
         }
-        return result;
+        return new ArrayList<>(result);
     }
 
     public List<Application> getApplications(Group group) throws VipException {
