@@ -4,8 +4,16 @@ env:
 name: tests_coverage_jacoco
 
 on:
-  schedule:
-    - cron: "0 0 1 * *" # Once a month
+  push:
+    branches:
+      - develop
+      - main
+
+  pull_request:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: write
